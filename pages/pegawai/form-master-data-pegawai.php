@@ -41,27 +41,44 @@ if ($mode == 'edit' && $id_peg) {
 }
 
 // Redirect Logic
-$redirect_back = "home-admin.php?page=form-view-data-pegawai";
+$redirect_back = function_exists('page_url') ? page_url('form-view-data-pegawai') : "home-admin.php?page=form-view-data-pegawai";
 if(isset($_SESSION['id_pegawai']) && $_SESSION['id_pegawai'] == $id_peg){
-    $redirect_back = "home-admin.php?page=profil-pegawai";
+    $redirect_back = function_exists('page_url') ? page_url('profil-pegawai') : "home-admin.php?page=profil-pegawai";
 } elseif($mode == 'edit') {
-    $redirect_back = "home-admin.php?page=view-detail-data-pegawai&id_peg=" . urlencode($id_peg);
+    $redirect_back = function_exists('page_url') ? page_url('view-detail-data-pegawai', array('id_peg' => $id_peg)) : "home-admin.php?page=view-detail-data-pegawai&id_peg=" . urlencode($id_peg);
 }
 ?>
 
 <style>
-    /* Styling Manual karena Header dihapus */
-    .content-wrapper { background-color: #f4f6f9; }
-    .card-modern { border: none; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 20px; }
-    .form-header { background: linear-gradient(135deg, #007bff, #6610f2); color: white; border-radius: 15px 15px 0 0; padding: 20px; }
-    .input-group-text { background-color: #fff; border-right: none; border-radius: 10px 0 0 10px; }
-    .form-control { border-left: none; border-radius: 0 10px 10px 0; }
-    .form-control:focus { box-shadow: none; border-color: #ced4da; }
-    select.form-control { border-left: 1px solid #ced4da; border-radius: 10px; }
-    .section-title { font-size: 0.9rem; font-weight: 700; color: #6c757d; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
+    .pegawai-form-page .custom-file-label {
+        border-radius: 12px;
+        min-height: 44px;
+        padding-top: 0.6rem;
+        border-color: var(--simpeg-border);
+    }
+    .pegawai-form-page .custom-file-label::after {
+        border-radius: 0 12px 12px 0;
+        background: var(--simpeg-surface-muted);
+        color: var(--simpeg-text);
+        font-weight: 700;
+    }
+    .pegawai-form-page .img-thumbnail {
+        border: 3px solid rgba(255,255,255,0.95);
+        box-shadow: var(--simpeg-shadow-soft);
+        background: #fff;
+    }
 </style>
 
-<div class="container-fluid pb-5">
+<section class="content simpeg-page pegawai-form-page">
+<div class="container-fluid">
+    <div class="simpeg-form-shell">
+    <div class="simpeg-page-header">
+        <div>
+            <h1 class="simpeg-page-title"><?php echo $mode === 'edit' ? 'Ubah Biodata Pegawai' : 'Tambah Pegawai Baru'; ?></h1>
+            <p class="simpeg-page-subtitle">Lengkapi identitas, data pribadi, kontak, dan foto pegawai dalam satu template yang konsisten.</p>
+        </div>
+        <a href="<?php echo htmlspecialchars($redirect_back); ?>" class="btn btn-light border"><i class="fas fa-arrow-left mr-2"></i>Kembali</a>
+    </div>
     <form action="pages/pegawai/simpan-data-pegawai.php" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
         
         <input type="hidden" name="mode" value="<?php echo htmlspecialchars($mode); ?>">
@@ -75,16 +92,14 @@ if(isset($_SESSION['id_pegawai']) && $_SESSION['id_pegawai'] == $id_peg){
             <input type="hidden" name="status_aktif" value="<?php echo htmlspecialchars($dataUser['status_aktif']); ?>">
         <?php endif; ?>
 
-        <div class="row justify-content-center">
-            <div class="col-md-10">
-                <div class="card card-modern">
-                    <div class="form-header">
-                        <h4 class="m-0 font-weight-bold"><i class="fas fa-user-edit mr-2"></i> Form <?= ucfirst(htmlspecialchars($mode)) ?> Biodata</h4>
-                        <p class="m-0 small opacity-75">Lengkapi data pegawai dengan benar.</p>
+        <div class="card simpeg-form-card">
+                    <div class="card-header">
+                        <h4 class="card-title mb-1"><i class="fas fa-user-edit mr-2 text-primary"></i>Form <?php echo ucfirst(htmlspecialchars($mode)); ?> Biodata</h4>
+                        <p class="small mb-0">Pastikan data inti pegawai valid sebelum disimpan.</p>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="card-body simpeg-form-grid">
 
-                        <div class="section-title"><i class="fas fa-id-card mr-2"></i> Identitas Utama</div>
+                        <div class="simpeg-section-title"><i class="fas fa-id-card text-primary"></i> Identitas Utama</div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label>ID Pegawai <span class="text-danger">*</span></label>
@@ -111,7 +126,7 @@ if(isset($_SESSION['id_pegawai']) && $_SESSION['id_pegawai'] == $id_peg){
                             </div>
                         </div>
 
-                        <div class="section-title mt-4"><i class="fas fa-user-tag mr-2"></i> Data Pribadi</div>
+                        <div class="simpeg-section-title mt-4"><i class="fas fa-user-tag text-primary"></i> Data Pribadi</div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label>Tempat Lahir</label>
@@ -175,7 +190,7 @@ if(isset($_SESSION['id_pegawai']) && $_SESSION['id_pegawai'] == $id_peg){
                             </div>
                         </div>
 
-                        <div class="section-title mt-4"><i class="fas fa-address-book mr-2"></i> Kontak & Administrasi</div>
+                        <div class="simpeg-section-title mt-4"><i class="fas fa-address-book text-primary"></i> Kontak dan Administrasi</div>
                         <div class="row">
                             <div class="col-md-12 mb-3">
                                 <label>Alamat Domisili</label>
@@ -214,7 +229,7 @@ if(isset($_SESSION['id_pegawai']) && $_SESSION['id_pegawai'] == $id_peg){
                             </div>
                         </div>
                         
-                        <div class="section-title mt-4"><i class="fas fa-camera mr-2"></i> Foto Profil</div>
+                        <div class="simpeg-section-title mt-4"><i class="fas fa-camera text-primary"></i> Foto Profil</div>
                         <div class="form-group">
                             <div class="row align-items-center">
                                 <div class="col-md-9">
@@ -252,23 +267,29 @@ if(isset($_SESSION['id_pegawai']) && $_SESSION['id_pegawai'] == $id_peg){
                         </div>
 
                     </div>
-                    <div class="card-footer bg-white text-right py-3 rounded-bottom">
-                        <a href="<?php echo htmlspecialchars($redirect_back); ?>" class="btn btn-light rounded-pill px-4 mr-2">Batal</a>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm"><i class="fas fa-save mr-2"></i> Simpan Data</button>
+                    <div class="card-footer bg-white">
+                        <div class="simpeg-form-actions">
+                            <a href="<?php echo htmlspecialchars($redirect_back); ?>" class="btn btn-light border">Batal</a>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>Simpan Data</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
     </form>
 </div>
+</div>
+</section>
 
 <script>
   // 1. Script Ganti Label File (Vanilla JS - Aman tanpa jQuery)
-  document.querySelector('.custom-file-input').addEventListener('change', function(e) {
-    var fileName = document.getElementById("foto").files[0].name;
-    var nextSibling = e.target.nextElementSibling;
-    nextSibling.innerText = fileName;
-  });
+  var fotoInput = document.querySelector('.custom-file-input');
+  if (fotoInput) {
+    fotoInput.addEventListener('change', function(e) {
+      if (!document.getElementById("foto").files.length) return;
+      var fileName = document.getElementById("foto").files[0].name;
+      var nextSibling = e.target.nextElementSibling;
+      nextSibling.innerText = fileName;
+    });
+  }
 
   // 2. Validasi Form
   (function() {

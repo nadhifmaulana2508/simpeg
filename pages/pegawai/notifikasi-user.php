@@ -1,11 +1,4 @@
 <?php
-$page_title = "Riwayat";
-$page_subtitle = "Notifikasi";
-$breadcrumbs = [
-  ["label" => "Dashboard", "url" => "home-admin.php"],
-  ["label" => "Riwayat Notifikasi"]
-];
-include "komponen/header.php";
 include 'dist/koneksi.php';
 
 // 1. SECURITY: Sanitize the session ID before using it in SQL
@@ -14,7 +7,8 @@ $id_user = mysqli_real_escape_string($conn, $_SESSION['id_user']);
 
 // 2. OPTIMIZATION: Combine Query logic if possible, but keeping it simple here.
 $qNotif = mysqli_query($conn, "
-  SELECT * FROM tb_notifikasi
+  SELECT *
+  FROM tb_notifikasi
   WHERE id_user = '$id_user'
   ORDER BY waktu_notif DESC
 ");
@@ -23,60 +17,104 @@ $qNotif = mysqli_query($conn, "
 mysqli_query($conn, "UPDATE tb_notifikasi SET status_baca = 'read' WHERE id_user = '$id_user'");
 ?>
 
-<section class="content-header">
+<style>
+  .notif-page { padding-top: 1rem; }
+  .notif-shell {
+    border: 1px solid #dbe8df;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 14px 34px rgba(15,35,26,0.06);
+    overflow: hidden;
+  }
+  .notif-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid #e3eee7;
+    background: linear-gradient(180deg, #fbfdfb, #f6faf7);
+  }
+  .notif-title { margin: 0; font-size: 1.12rem; font-weight: 800; color: #10231d; }
+  .notif-subtitle { margin: 0.12rem 0 0; color: #66756e; font-size: 0.86rem; }
+  .notif-list { padding: 0.6rem; }
+  .notif-item {
+    display: grid;
+    grid-template-columns: 42px 1fr auto;
+    gap: 0.85rem;
+    align-items: start;
+    padding: 0.9rem;
+    border: 1px solid transparent;
+    border-radius: 14px;
+  }
+  .notif-item + .notif-item { border-top-color: #edf3ef; border-radius: 0; }
+  .notif-icon {
+    width: 42px; height: 42px; border-radius: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #dff5f2; color: #0f766e;
+  }
+  .notif-name { font-weight: 800; color: #10231d; margin-bottom: 0.2rem; }
+  .notif-message { color: #52635c; margin: 0; line-height: 1.45; }
+  .notif-meta { color: #7a8a83; font-size: 0.8rem; white-space: nowrap; }
+  .notif-badge {
+    display: inline-flex; align-items: center;
+    border-radius: 999px; padding: 0.24rem 0.58rem;
+    font-size: 0.72rem; font-weight: 800;
+    background: #eef5f0; color: #64746d;
+    margin-top: 0.45rem;
+  }
+  .notif-badge.unread { background: #fff3cd; color: #996100; }
+  .btn-notif-back {
+    border-radius: 12px; border: 1px solid #d9e5dc;
+    background: #fff; color: #0f766e; font-weight: 800;
+  }
+  @media (max-width: 767.98px) {
+    .notif-head { align-items: stretch; flex-direction: column; }
+    .notif-item { grid-template-columns: 36px 1fr; }
+    .notif-meta { grid-column: 2; white-space: normal; }
+  }
+</style>
+
+<section class="content notif-page">
   <div class="container-fluid">
-    <div class="row mb-2">
-      <div class="col-sm-6 text-begin">
-        <a href="javascript:history.back()" class="btn btn-secondary btn-sm mt-1">
-          <i class="fas fa-arrow-left"></i> Kembali
+    <div class="notif-shell">
+      <div class="notif-head">
+        <div>
+          <h3 class="notif-title">Notifikasi</h3>
+          <p class="notif-subtitle">Riwayat status pengajuan dan informasi aplikasi.</p>
+        </div>
+        <a href="javascript:history.back()" class="btn btn-notif-back">
+          <i class="fas fa-arrow-left mr-1"></i> Kembali
         </a>
       </div>
-    </div>
-  </div>
-</section>
-
-<section class="content">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="card shadow-sm">
-          <div class="card-body table-responsive">
-            <table class="table table-bordered table-striped w-100">
-              <thead class="table-light">
-                <tr>
-                  <th>#</th>
-                  <th>Judul</th>
-                  <th>Pesan</th>
-                  <th>Waktu</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php $no=1; while ($row = mysqli_fetch_assoc($qNotif)): ?>
-                  <tr>
-                    <td><?= $no++ ?></td>
-                    <td><?= htmlspecialchars($row['judul']) ?></td>
-                    <td><?= htmlspecialchars($row['pesan']) ?></td>
-                    <td><?= date('d-m-Y H:i', strtotime($row['waktu_notif'])) ?></td>
-                    <td>
-                      <?php if ($row['status_baca'] == 'unread'): ?>
-                        <span class="badge bg-warning text-dark">Belum dibaca</span>
-                      <?php else: ?>
-                        <span class="badge bg-secondary">Dibaca</span>
-                      <?php endif; ?>
-                    </td>
-                    <td>
-                      <?php if (!empty($row['link_aksi'])): ?>
-                        <a href="<?= htmlspecialchars($row['link_aksi']) ?>" class="btn btn-sm btn-info">Lihat</a>
-                      <?php endif; ?>
-                    </td>
-                  </tr>
-                <?php endwhile; ?>
-              </tbody>
-            </table>
+      <div class="notif-list">
+        <?php if ($qNotif && mysqli_num_rows($qNotif) > 0): ?>
+          <?php while ($row = mysqli_fetch_assoc($qNotif)): ?>
+            <?php
+              $status_baca = strtolower(isset($row['status_baca']) ? $row['status_baca'] : '');
+              $is_unread = in_array($status_baca, array('unread', 'belum'));
+              $waktu_raw = isset($row['waktu_notif']) ? $row['waktu_notif'] : '';
+              $waktu = $waktu_raw ? date('d M Y H:i', strtotime($waktu_raw)) : '-';
+            ?>
+            <div class="notif-item">
+              <span class="notif-icon"><i class="fas fa-bell"></i></span>
+              <div>
+                <div class="notif-name"><?= htmlspecialchars($row['judul']) ?></div>
+                <p class="notif-message"><?= htmlspecialchars($row['pesan']) ?></p>
+                <span class="notif-badge <?= $is_unread ? 'unread' : '' ?>"><?= $is_unread ? 'Belum dibaca' : 'Dibaca' ?></span>
+                <?php if (!empty($row['link_aksi'])): ?>
+                  <a href="<?= htmlspecialchars($row['link_aksi']) ?>" class="btn btn-sm btn-link font-weight-bold text-success ml-2">Lihat</a>
+                <?php endif; ?>
+              </div>
+              <div class="notif-meta"><i class="far fa-clock mr-1"></i><?= $waktu ?></div>
+            </div>
+          <?php endwhile; ?>
+        <?php else: ?>
+          <div class="text-center text-muted py-5">
+            <i class="far fa-bell mb-3" style="font-size:2rem;opacity:.5"></i>
+            <div>Belum ada notifikasi.</div>
           </div>
-        </div>
+        <?php endif; ?>
       </div>
     </div>
   </div>

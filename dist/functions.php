@@ -50,6 +50,24 @@ function aturSessionTimeout($detik, $redirect) {
   }
 }
 
+function simpeg_role_otomatis_dari_jabatan($jabatan) {
+  $jabatan = strtolower(trim((string) $jabatan));
+
+  if ($jabatan === '') {
+    return 'User';
+  }
+
+  if (strpos($jabatan, 'direktur') !== false || strpos($jabatan, 'direksi') !== false) {
+    return 'Superadmin';
+  }
+
+  $is_kepala_unit = strpos($jabatan, 'kepala cabang') !== false || strpos($jabatan, 'kepala kantor') !== false;
+  $is_kabid_operasional = strpos($jabatan, 'operasional') !== false
+      && (strpos($jabatan, 'kabid') !== false || strpos($jabatan, 'kepala bidang') !== false);
+
+  return ($is_kepala_unit || $is_kabid_operasional) ? 'Kepala' : 'User';
+}
+
 
 function sinkron_user_dari_pegawai($id_peg) {
   include 'koneksi.php';
@@ -60,9 +78,20 @@ function sinkron_user_dari_pegawai($id_peg) {
 
   $peg = mysqli_fetch_assoc($q);
   $nama = $peg['nama'];
-  $jabatan = $peg['jabatan']; // asumsikan sudah tersedia
+  $jabatan = '';
+  $qJabatan = mysqli_query($conn, "
+    SELECT jabatan
+    FROM tb_jabatan
+    WHERE id_peg = '$id_peg' AND LOWER(status_jab) = 'aktif'
+    ORDER BY tmt_jabatan DESC, id_jab DESC
+    LIMIT 1
+  ");
+  if ($qJabatan && mysqli_num_rows($qJabatan) > 0) {
+    $rowJabatan = mysqli_fetch_assoc($qJabatan);
+    $jabatan = $rowJabatan['jabatan'];
+  }
   $status_aktif = $peg['status_aktif'];
-  $hak_akses = (strtolower($jabatan) == 'kepala cabang') ? 'Kepala' : 'User';
+  $hak_akses = simpeg_role_otomatis_dari_jabatan($jabatan);
   $username = strtolower(preg_replace('/[^a-z0-9]/', '', explode(' ', $peg['nama'])[0])); // e.g. linda
   $password_default = password_hash('123456', PASSWORD_DEFAULT);
   $created_by = isset($_SESSION['id_user']) ? $_SESSION['id_user'] : 'system';
@@ -101,14 +130,101 @@ function logAktivitas($id_user, $aksi, $keterangan) {
 
 
 function hanyaAdmin() {
-    if (!isset($_SESSION['hak_akses']) || $_SESSION['hak_akses'] != 'admin') {
+    $role = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : '';
+    if ($role != 'admin' && $role != 'superadmin') {
         echo "Akses ditolak.";
         exit;
     }
 }
 
 function aksesAdminKepala() {
-    return isset($_SESSION['hak_akses']) && in_array(strtolower($_SESSION['hak_akses']), ['admin', 'kepala']);
+    return isset($_SESSION['hak_akses']) && in_array(strtolower($_SESSION['hak_akses']), ['admin', 'superadmin', 'kepala']);
+}
+
+function getJabatanAktifPegawai($id_peg) {
+    global $conn;
+    if (!isset($conn) || !$conn || $id_peg === '') {
+        return null;
+    }
+
+    $id_safe = mysqli_real_escape_string($conn, $id_peg);
+    $q = mysqli_query($conn, "
+        SELECT id_peg, jabatan, unit_kerja
+        FROM tb_jabatan
+        WHERE id_peg = '".$id_safe."'
+          AND LOWER(status_jab) = 'aktif'
+        ORDER BY tmt_jabatan DESC, id_jab DESC
+        LIMIT 1
+    ");
+
+    return ($q && mysqli_num_rows($q) > 0) ? mysqli_fetch_assoc($q) : null;
+}
+
+function userBisaApprovalOtorisasi() {
+    $role = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : '';
+    if ($role === 'admin' || $role === 'superadmin' || $role === 'kepala') {
+        return true;
+    }
+
+    $id_peg = isset($_SESSION['id_pegawai']) ? $_SESSION['id_pegawai'] : '';
+    $jab = getJabatanAktifPegawai($id_peg);
+    if (!$jab) {
+        return false;
+    }
+
+    $nama_jabatan = strtolower($jab['jabatan']);
+    return (strpos($nama_jabatan, 'operasional') !== false)
+        && (strpos($nama_jabatan, 'kabid') !== false || strpos($nama_jabatan, 'kepala bidang') !== false);
+}
+
+function unitKerjaApprovalUser() {
+    if (isset($_SESSION['kode_kantor']) && $_SESSION['kode_kantor'] !== '') {
+        return $_SESSION['kode_kantor'];
+    }
+
+    $id_peg = isset($_SESSION['id_pegawai']) ? $_SESSION['id_pegawai'] : '';
+    $jab = getJabatanAktifPegawai($id_peg);
+    return ($jab && isset($jab['unit_kerja'])) ? $jab['unit_kerja'] : '';
+}
+
+function simpegKodeKantorApproval($kode_kantor) {
+    $kode_kantor = preg_replace('/[^0-9A-Za-z]/', '', (string) $kode_kantor);
+    if ($kode_kantor === '') {
+        return '';
+    }
+
+    return substr($kode_kantor, 0, 3);
+}
+
+function simpegScopeKantorApproval($kode_kantor) {
+    $kode = simpegKodeKantorApproval($kode_kantor);
+    if ($kode === '') {
+        return array();
+    }
+
+    if ($kode === '000') {
+        $scope = array();
+        for ($i = 0; $i <= 28; $i++) {
+            $scope[] = sprintf('%03d', $i);
+        }
+        return $scope;
+    }
+
+    return array($kode);
+}
+
+function simpegSqlInKantorApproval($conn, $column, $kode_kantor) {
+    $scope = simpegScopeKantorApproval($kode_kantor);
+    if (empty($scope)) {
+        return '1=0';
+    }
+
+    $safe = array();
+    foreach ($scope as $kode) {
+        $safe[] = "'" . mysqli_real_escape_string($conn, $kode) . "'";
+    }
+
+    return $column . ' IN (' . implode(',', $safe) . ')';
 }
 
 function isKepala() {
@@ -127,6 +243,34 @@ function proteksiAksesPegawai($id_peg) {
         echo "Akses ditolak.";
         exit;
     }
+}
+
+function simpeg_avatar_default($gender = '') {
+    $gender = strtolower(trim((string) $gender));
+    return in_array($gender, array('perempuan', 'p', 'wanita'), true)
+        ? 'dist/img/avatar3.png'
+        : 'dist/img/avatar5.png';
+}
+
+function simpeg_resolve_photo_path($foto_db, $gender = '', $append_bust = true) {
+    $avatar = simpeg_avatar_default($gender);
+    $foto_db = trim((string) $foto_db);
+
+    if ($foto_db === '') {
+        return $avatar;
+    }
+
+    $baseDir = 'pages/assets/foto/';
+    $extensions = array('', '.jpg', '.jpeg', '.png', '.webp', '.JPG', '.JPEG', '.PNG', '.WEBP');
+
+    foreach ($extensions as $ext) {
+        $candidate = $baseDir . $foto_db . $ext;
+        if (file_exists($candidate) && is_file($candidate)) {
+            return $append_bust ? ($candidate . '?t=' . time()) : $candidate;
+        }
+    }
+
+    return $avatar;
 }
 
 function getPage($page) {

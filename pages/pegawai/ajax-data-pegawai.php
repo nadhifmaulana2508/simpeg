@@ -6,6 +6,18 @@ error_reporting(0);
 if (session_id() === '') session_start();
 include "../../dist/koneksi.php";
 
+if (empty($_SESSION['id_user'])) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    exit(json_encode(array(
+        'draw' => isset($_GET['draw']) ? (int) $_GET['draw'] : 0,
+        'recordsTotal' => 0,
+        'recordsFiltered' => 0,
+        'data' => array(),
+        'error' => 'Akses ditolak'
+    )));
+}
+
 // Fungsi Helper
 function h($s){ return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
@@ -60,12 +72,14 @@ $limit  = isset($_GET['length']) ? intval($_GET['length']) : 10;
 $offset = isset($_GET['start']) ? intval($_GET['start']) : 0;
 
 // --- QUERY BUILDER ---
+$activeCondition = "p.status_aktif IN (1, '1', 'Y', 'y', 'Aktif')";
+
 $sqlBase = "
     FROM tb_pegawai p
     LEFT JOIN tb_jabatan j ON p.id_peg = j.id_peg AND j.status_jab = 'Aktif'
     LEFT JOIN tb_kantor k ON j.unit_kerja = k.kode_kantor_detail
     LEFT JOIN tb_master_jabatan m ON j.jabatan = m.nama_jabatan 
-    WHERE p.status_aktif = 1
+    WHERE ".$activeCondition."
 ";
 
 // Filter Logic
@@ -118,7 +132,7 @@ $rowCount   = mysqli_fetch_assoc($queryCount);
 $totalFiltered = $rowCount['jum'];
 
 // Hitung Total Semua Data
-$sqlTotalRaw = "SELECT COUNT(DISTINCT p.id_peg) as jum FROM tb_pegawai p LEFT JOIN tb_jabatan j ON p.id_peg = j.id_peg AND j.status_jab = 'Aktif' WHERE p.status_aktif = 1";
+$sqlTotalRaw = "SELECT COUNT(DISTINCT p.id_peg) as jum FROM tb_pegawai p LEFT JOIN tb_jabatan j ON p.id_peg = j.id_peg AND j.status_jab = 'Aktif' WHERE ".$activeCondition;
 if ($filterType === 'nonjob') $sqlTotalRaw .= " AND j.id_jab IS NULL"; 
 else $sqlTotalRaw .= " AND j.id_jab IS NOT NULL";
 

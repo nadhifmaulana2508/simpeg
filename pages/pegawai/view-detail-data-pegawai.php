@@ -29,7 +29,9 @@ $hak_akses_session = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_a
 $can_edit = ($hak_akses_session === 'admin' || $hak_akses_session === 'kepala');
 
 // Link Kembali (Sesuai Hak Akses)
-$link_back = ($hak_akses_session == 'kepala') ? "home-admin.php?page=dashboard-cabang" : "home-admin.php?page=form-view-data-pegawai";
+$link_back = ($hak_akses_session == 'kepala')
+    ? (function_exists('page_url') ? page_url('dashboard-cabang') : "home-admin.php?page=dashboard-cabang")
+    : (function_exists('page_url') ? page_url('form-view-data-pegawai') : "home-admin.php?page=form-view-data-pegawai");
 
 // --- 3. QUERY DATA UTAMA ---
 $tampilPeg = mysqli_query($conn, "SELECT * FROM tb_pegawai WHERE id_peg = '$id_peg'");
@@ -67,50 +69,59 @@ if (!empty($foto_db)) {
 ?>
 
 <style>
-    .profile-header-cover { background: linear-gradient(135deg, #007bff 0%, #6610f2 100%); height: 130px; border-radius: 12px 12px 0 0; }
-    .profile-user-img { width: 130px; height: 130px; margin-top: -65px; border: 5px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: #fff; object-fit: cover; }
-    .nav-pills-custom { border-bottom: 1px solid #eee; margin-bottom: 20px; }
-    .nav-pills-custom .nav-link { color: #6c757d; font-weight: 600; padding: 12px 20px; border-radius: 0; border-bottom: 3px solid transparent; transition: all 0.3s; }
-    .nav-pills-custom .nav-link:hover { color: #007bff; background: #f8f9fa; }
-    .nav-pills-custom .nav-link.active { background-color: transparent; color: #007bff; border-bottom: 3px solid #007bff; }
-    .btn-quick { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px; border-radius: 10px; border: 1px solid #eee; background: #fff; color: #555; transition: 0.2s; width: 100%; cursor: pointer; }
-    .btn-quick i { font-size: 1.5rem; color: #007bff; }
-    .btn-quick span { font-size: 0.8rem; font-weight: 600; }
-    .btn-quick:hover { background: #f0f8ff; border-color: #007bff; text-decoration: none; color: #007bff; }
-    .table-detail tr td { padding: 10px 15px; border-bottom: 1px solid #f4f4f4; }
-    .table-detail tr td:first-child { width: 35%; color: #888; font-weight: 500; }
-    .table-detail tr td:last-child { font-weight: 600; color: #333; }
-    .table-responsive { display: block; width: 100%; overflow-x: auto; }
+    .pegawai-detail-page .profile-header-cover { background: linear-gradient(135deg, #0f766e 0%, #3f83d5 100%); height: 138px; border-radius: 18px 18px 0 0; }
+    .pegawai-detail-page .profile-user-img { width: 128px; height: 128px; margin-top: -64px; border: 5px solid #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.12); background: #fff; object-fit: cover; }
+    .pegawai-detail-page .nav-pills-custom { border-bottom: 1px solid rgba(223, 230, 215, 0.95); margin-bottom: 0; padding: 0 1rem; }
+    .pegawai-detail-page .nav-pills-custom .nav-link { color: #6c757d; font-weight: 700; padding: 14px 18px; border-radius: 0; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .pegawai-detail-page .nav-pills-custom .nav-link:hover { color: var(--simpeg-primary); background: transparent; }
+    .pegawai-detail-page .nav-pills-custom .nav-link.active { background-color: #0f766e !important; color: #fff !important; border-bottom: 3px solid #14b8a6; }
+    .pegawai-detail-page .table-detail tr td { padding: 12px 15px; border-bottom: 1px solid #f1f5f3; }
+    .pegawai-detail-page + .modal .modal-content,
+    .modal .modal-content { border: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 26px 70px rgba(15, 35, 26, 0.22); }
+    .modal .modal-header { background: #0f766e !important; color: #fff !important; border: 0; padding: 1rem 1.25rem; }
+    .modal .modal-title { font-weight: 800; }
+    .modal .close { opacity: .8; text-shadow: none; }
+    .modal .modal-body { padding: 1rem 1.25rem; }
+    .modal .table { margin-bottom: 0; border-radius: 14px; overflow: hidden; }
+    .modal .table thead th { background: #f6faf7; color: #51645d; font-size: .78rem; text-transform: uppercase; border-bottom: 1px solid #dbe8df; }
+    .modal .table tbody td { vertical-align: middle; }
+    @media (max-width: 576px) {
+        .pegawai-detail-page .nav-pills-custom { display: flex; flex-wrap: nowrap; overflow-x: auto; padding: .35rem; }
+        .pegawai-detail-page .nav-pills-custom .nav-link { white-space: nowrap; padding: 11px 14px; border-radius: 12px; }
+    }
 </style>
 
-<section class="content-header pt-4 pb-2">
+<section class="content simpeg-page pegawai-detail-page">
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="simpeg-page-header">
             <div>
-                <h1 class="m-0 font-weight-bold text-dark">Detail Pegawai</h1>
-                <p class="text-muted mb-0 small">Melihat & Mengelola data pegawai</p>
+                <h1 class="simpeg-page-title">Detail Pegawai</h1>
+                <p class="simpeg-page-subtitle">Melihat biodata, keluarga, riwayat, dan aksi lanjutan pegawai dalam satu halaman.</p>
             </div>
             <div>
-                <a href="<?= $link_back ?>" class="btn btn-secondary btn-sm rounded-pill px-3 shadow-sm"><i class="fa fa-arrow-left mr-1"></i> Kembali</a>
+                <a href="<?= $link_back ?>" class="btn btn-light border shadow-sm"><i class="fa fa-arrow-left mr-1"></i> Kembali</a>
             </div>
         </div>
-    </div>
-</section>
-
-<section class="content pb-5">
-    <div class="container-fluid">
         <div class="row">
             
             <div class="col-md-4 col-lg-3 mb-4">
                 
-                <div class="card shadow-sm border-0" style="border-radius: 12px;">
+                <div class="card shadow-sm border-0">
                     <div class="profile-header-cover"></div>
                     <div class="card-body text-center pt-0">
+                        <?php if($can_edit): ?>
+                        <a class="d-inline-block" href="home-admin.php?page=form-ganti-foto&id_peg=<?= urlencode($peg['id_peg']); ?>&source=detail" title="Klik foto untuk ganti foto">
+                            <img class="profile-user-img img-fluid img-circle"
+                                 src="<?php echo $src_foto; ?>?time=<?php echo time(); ?>"
+                                 onerror="this.src='<?php echo $avatar_def; ?>';">
+                        </a>
+                        <?php else: ?>
                         <div class="fancybox-trigger">
                             <img class="profile-user-img img-fluid img-circle"
                                  src="<?php echo $src_foto; ?>?time=<?php echo time(); ?>"
                                  onerror="this.src='<?php echo $avatar_def; ?>';">
                         </div>
+                        <?php endif; ?>
                         
                         <h4 class="mt-3 mb-1 font-weight-bold"><?php echo htmlspecialchars($peg['nama']); ?></h4>
                         <p class="text-muted mb-2 small"><?php echo htmlspecialchars($peg['id_peg']); ?></p>
@@ -123,26 +134,21 @@ if (!empty($foto_db)) {
                             <h6 class="mb-0 ml-4 small text-truncate"><?php echo $peg['email'] ? htmlspecialchars($peg['email']) : '-'; ?></h6>
                         </div>
 
-                        <?php if($can_edit): ?>
-                        <div class="mt-4">
-                            <a href="home-admin.php?page=form-ganti-foto&id_peg=<?= urlencode($peg['id_peg']); ?>&source=detail" class="btn btn-outline-primary btn-sm btn-block rounded-pill"><i class="fa fa-camera mr-1"></i> Ganti Foto</a>
-                        </div>
-                        <?php endif; ?>
                     </div>
                 </div>
 
-                <div class="card shadow-sm border-0" style="border-radius: 12px;">
+                <div class="card shadow-sm border-0">
                     <div class="card-header bg-white font-weight-bold border-bottom-0">
                         <i class="fas fa-th mr-2 text-primary"></i> Menu Cepat
                     </div>
                     <div class="card-body p-2">
-                        <div class="row no-gutters">
-                            <div class="col-4 p-1"><button type="button" class="btn-quick" data-toggle="modal" data-target="#pensiun"><i class="fa fa-user-clock"></i> <span>Pensiun</span></button></div>
-                            <div class="col-4 p-1"><button type="button" class="btn-quick" data-toggle="modal" data-target="#naikpkt"><i class="fa fa-layer-group"></i> <span>Pangkat</span></button></div>
-                            <div class="col-4 p-1"><button type="button" class="btn-quick" data-toggle="modal" data-target="#naikgj"><i class="fa fa-money-bill"></i> <span>Gaji</span></button></div>
-                            <div class="col-4 p-1"><button type="button" class="btn-quick" data-toggle="modal" data-target="#dp3"><i class="fa fa-chart-line"></i> <span>SKP</span></button></div>
-                            <div class="col-4 p-1"><button type="button" class="btn-quick" data-toggle="modal" data-target="#bahasa"><i class="fa fa-language"></i> <span>Bahasa</span></button></div>
-                            <div class="col-4 p-1"><button type="button" class="btn-quick" data-toggle="modal" data-target="#pendidikan"><i class="fa fa-graduation-cap"></i> <span>Sekolah</span></button></div>
+                        <div class="simpeg-quick-actions">
+                            <button type="button" class="simpeg-quick-btn" data-toggle="modal" data-target="#pensiun"><i class="fa fa-user-clock"></i><span>Pensiun</span></button>
+                            <button type="button" class="simpeg-quick-btn" data-toggle="modal" data-target="#naikpkt"><i class="fa fa-layer-group"></i><span>Pangkat</span></button>
+                            <button type="button" class="simpeg-quick-btn" data-toggle="modal" data-target="#naikgj"><i class="fa fa-money-bill"></i><span>Gaji</span></button>
+                            <button type="button" class="simpeg-quick-btn" data-toggle="modal" data-target="#dp3"><i class="fa fa-chart-line"></i><span>SKP</span></button>
+                            <button type="button" class="simpeg-quick-btn" data-toggle="modal" data-target="#bahasa"><i class="fa fa-language"></i><span>Bahasa</span></button>
+                            <button type="button" class="simpeg-quick-btn" data-toggle="modal" data-target="#pendidikan"><i class="fa fa-graduation-cap"></i><span>Sekolah</span></button>
                         </div>
                     </div>
                 </div>
@@ -150,7 +156,7 @@ if (!empty($foto_db)) {
             </div>
 
             <div class="col-md-8 col-lg-9">
-                <div class="card shadow-sm border-0" style="border-radius: 12px; min-height: 600px;">
+                <div class="card shadow-sm border-0" style="min-height: 600px;">
                     <div class="card-header p-0 border-bottom-0 bg-white rounded-top">
                         <ul class="nav nav-pills nav-pills-custom" id="custom-tabs" role="tablist">
                             <li class="nav-item"><a class="nav-link active" id="tab-bio" data-toggle="pill" href="#bio" role="tab">Biodata</a></li>
@@ -162,7 +168,7 @@ if (!empty($foto_db)) {
                         <div class="tab-content">
                             
                             <div class="tab-pane fade show active" id="bio" role="tabpanel">
-                                <table class="table-detail w-100">
+                                <table class="table-detail simpeg-info-table w-100">
                                     <tr><td>NIK</td><td>: <?php echo htmlspecialchars($peg['nip']); ?></td></tr>
                                     <tr><td>Nama Lengkap</td><td>: <?php echo htmlspecialchars($peg['nama']); ?></td></tr>
                                     <tr><td>TTL</td><td>: <?php echo htmlspecialchars($peg['tempat_lhr']) . ', ' . date('d-m-Y', strtotime($peg['tgl_lhr'])); ?></td></tr>
@@ -316,7 +322,7 @@ if (!empty($foto_db)) {
         <div class="modal-content">
             <div class="modal-header bg-primary text-white"><h5 class="modal-title">Riwayat Pangkat</h5><button type="button" class="close text-white" data-dismiss="modal">&times;</button></div>
             <div class="modal-body">
-                <div class="alert alert-info py-2"><strong>Estimasi Naik:</strong> <?php if($peg['tgl_naikpangkat']){ $next = new DateTime($peg['tgl_naikpangkat']); $next->modify('+4 year'); echo $next->format('d-m-Y'); } else { echo "-"; } ?></div>
+                <div class="alert alert-info py-2"><strong>Estimasi Naik:</strong> <?php if(!empty($peg['tgl_naikpangkat'])){ $next = new DateTime($peg['tgl_naikpangkat']); $next->modify('+4 year'); echo $next->format('d-m-Y'); } else { echo "Data belum tersedia"; } ?></div>
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm">
                         <thead class="bg-light"><tr><th>Pangkat</th><th>Gol</th><th>TMT</th><th>SK</th></tr></thead>
@@ -406,13 +412,12 @@ if (!empty($foto_db)) {
         <div class="modal-content">
             <div class="modal-header bg-warning text-white"><h5 class="modal-title">Sasaran Kerja (SKP)</h5><button type="button" class="close text-white" data-dismiss="modal">&times;</button></div>
             <div class="modal-body table-responsive">
-                <table class="table table-bordered table-hover"><thead><tr><th>Periode</th><th>Nilai</th><th>Mutu</th><th>Aksi</th></tr></thead><tbody>
+                <table class="table table-bordered table-hover"><thead><tr><th>Periode</th><th>Nilai</th><th>Mutu</th></tr></thead><tbody>
                 <?php $qDp3 = mysqli_query($conn,"SELECT * FROM tb_dp3 WHERE id_peg='$id_peg' ORDER BY periode_akhir DESC"); while($d=mysqli_fetch_array($qDp3)){ $jml = $d['nilai_kesetiaan']+$d['nilai_prestasi']+$d['nilai_tgjwb']+$d['nilai_ketaatan']+$d['nilai_kejujuran']+$d['nilai_kerjasama']+$d['nilai_prakarsa']+$d['nilai_kepemimpinan']; ?>
                 <tr>
                     <td><?= htmlspecialchars($d['periode_akhir']) ?></td>
                     <td><?= htmlspecialchars($jml) ?></td>
                     <td><?= htmlspecialchars($d['hasil_penilaian']) ?></td>
-                    <td><a href="home-admin.php?page=view-detail-data-dp3&id_dp3=<?=urlencode($d['id_dp3'])?>" class="btn btn-xs btn-info">Detail</a></td>
                 </tr>
                 <?php } ?>
                 </tbody></table>

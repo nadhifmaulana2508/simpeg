@@ -18,11 +18,13 @@ $__paths = array(
 );
 foreach ($__paths as $__p) { if (is_file($__p)) { include_once $__p; } } // Removed @ for better error visibility
 if (!isset($koneksi)) { if (isset($conn)) { $koneksi = $conn; } }
+@include_once __DIR__ . '/../../dist/functions.php';
 
 /* ===== Guard ===== */
 // Good practice: Explicit access control check
 $hak_akses = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : '';
-if ($hak_akses !== 'kepala') {
+$can_approve = function_exists('userBisaApprovalOtorisasi') ? userBisaApprovalOtorisasi() : ($hak_akses === 'kepala' || $hak_akses === 'admin' || $hak_akses === 'superadmin');
+if (!$can_approve) {
   echo "<script>alert('Anda tidak memiliki akses.'); window.location='home-admin.php';</script>";
   exit;
 }
@@ -44,8 +46,23 @@ function norm_date($s){
 }
 
 /* ===== Params ===== */
-$kode_kantor   = isset($_SESSION['kode_kantor']) ? $_SESSION['kode_kantor'] : '';
-$is_all_kantor = in_array($kode_kantor, array('000','000000'));
+$kode_kantor   = function_exists('unitKerjaApprovalUser') ? unitKerjaApprovalUser() : (isset($_SESSION['kode_kantor']) ? $_SESSION['kode_kantor'] : '');
+$kode_kantor_approval = function_exists('simpegKodeKantorApproval') ? simpegKodeKantorApproval($kode_kantor) : substr($kode_kantor, 0, 3);
+$scope_kantor_approval = function_exists('simpegScopeKantorApproval') ? simpegScopeKantorApproval($kode_kantor) : array($kode_kantor_approval);
+$filter_kode_kantor = isset($_GET['kode_kantor']) ? preg_replace('/[^0-9A-Za-z]/', '', $_GET['kode_kantor']) : '';
+if ($filter_kode_kantor !== '' && !in_array($filter_kode_kantor, $scope_kantor_approval)) {
+  $filter_kode_kantor = '';
+}
+$label_kantor_akses = ($kode_kantor_approval === '000') ? 'Konsolidasi' : $kode_kantor_approval;
+
+@mysqli_query($koneksi, "
+  UPDATE tb_edit_pending ep
+  LEFT JOIN tb_user u ON ep.id_user = u.id_user
+  LEFT JOIN tb_jabatan target_jab ON ep.id_peg = target_jab.id_peg AND LOWER(target_jab.status_jab) = 'aktif'
+  LEFT JOIN tb_jabatan pengedit ON u.id_pegawai = pengedit.id_peg AND LOWER(pengedit.status_jab) = 'aktif'
+  SET ep.kode_kantor = COALESCE(LEFT(target_jab.unit_kerja, 3), LEFT(pengedit.unit_kerja, 3), ep.kode_kantor)
+  WHERE (ep.kode_kantor IS NULL OR ep.kode_kantor = '')
+");
 
 // Good practice: Whitelisting input values
 $status_opt = array('Semua','Menunggu','Disetujui','Ditolak');
@@ -64,12 +81,38 @@ $tgl_akhir_raw = isset($_GET['tgl_akhir']) ? $_GET['tgl_akhir'] : '';
 $tgl_awal  = norm_date($tgl_awal_raw);
 $tgl_akhir = norm_date($tgl_akhir_raw);
 
+$column_kantor = "COALESCE(NULLIF(ep.kode_kantor, ''), LEFT(target_jab.unit_kerja, 3), LEFT(pengedit.unit_kerja, 3))";
+$qKantorFilter = mysqli_query($koneksi, "
+  SELECT DISTINCT $column_kantor AS kode_kantor
+  FROM tb_edit_pending ep
+  LEFT JOIN tb_user u ON ep.id_user = u.id_user
+  LEFT JOIN tb_jabatan target_jab ON ep.id_peg = target_jab.id_peg AND LOWER(target_jab.status_jab) = 'aktif'
+  LEFT JOIN tb_jabatan pengedit ON u.id_pegawai = pengedit.id_peg AND LOWER(pengedit.status_jab) = 'aktif'
+  WHERE ".(function_exists('simpegSqlInKantorApproval')
+    ? simpegSqlInKantorApproval($koneksi, $column_kantor, $kode_kantor)
+    : $column_kantor . " = '".mysqli_real_escape_string($koneksi, $kode_kantor_approval)."'")."
+  ORDER BY kode_kantor ASC
+");
+$kantor_filter_options = array();
+if ($qKantorFilter) {
+  while ($kf = mysqli_fetch_assoc($qKantorFilter)) {
+    if (!empty($kf['kode_kantor'])) $kantor_filter_options[] = $kf['kode_kantor'];
+  }
+}
+
 /* ===== Build WHERE ===== */
 $where = array();
 
 if ($status !== 'Semua') {
-  // Good practice: Escaping string for SQL
-  $where[] = "ep.status_otorisasi = '".mysqli_real_escape_string($koneksi, $status)."'";
+  if ($status === 'Menunggu') {
+    $where[] = "ep.status_otorisasi IN ('Menunggu','pending')";
+  } elseif ($status === 'Disetujui') {
+    $where[] = "ep.status_otorisasi IN ('Disetujui','approved')";
+  } elseif ($status === 'Ditolak') {
+    $where[] = "ep.status_otorisasi IN ('Ditolak','rejected')";
+  } else {
+    $where[] = "ep.status_otorisasi = '".mysqli_real_escape_string($koneksi, $status)."'";
+  }
 }
 
 if ($tgl_awal && $tgl_akhir) {
@@ -81,10 +124,12 @@ if ($tgl_awal && $tgl_akhir) {
   $where[] = "DATE($date_col) <= '".$tgl_akhir."'";
 }
 
-if (!$is_all_kantor) {
-  // Good practice: Escaping session variable
-  $kantor_safe = mysqli_real_escape_string($koneksi, $kode_kantor);
-  $where[] = "(pengedit.unit_kerja = '".$kantor_safe."' OR p.kode_kantor = '".$kantor_safe."')";
+if ($filter_kode_kantor !== '') {
+  $where[] = $column_kantor . " = '".mysqli_real_escape_string($koneksi, $filter_kode_kantor)."'";
+} else {
+  $where[] = function_exists('simpegSqlInKantorApproval')
+    ? simpegSqlInKantorApproval($koneksi, $column_kantor, $kode_kantor)
+    : $column_kantor . " = '".mysqli_real_escape_string($koneksi, $kode_kantor_approval)."'";
 }
 
 $where_sql = count($where) ? 'WHERE '.implode(' AND ', $where) : '';
@@ -100,11 +145,12 @@ $sql = "
       ep.tanggal_otorisasi,
       u.nama_user,
       p.nama AS nama_pegawai,
-      pengedit.unit_kerja AS kantor_pemohon
+      COALESCE(NULLIF(ep.kode_kantor, ''), LEFT(target_jab.unit_kerja, 3), LEFT(pengedit.unit_kerja, 3), '-') AS kantor_pemohon
   FROM tb_edit_pending ep
   LEFT JOIN tb_user u ON ep.id_user = u.id_user
   LEFT JOIN tb_pegawai p ON ep.id_peg = p.id_peg
-  LEFT JOIN tb_jabatan pengedit ON u.id_pegawai = pengedit.id_peg
+  LEFT JOIN tb_jabatan pengedit ON u.id_pegawai = pengedit.id_peg AND LOWER(pengedit.status_jab) = 'aktif'
+  LEFT JOIN tb_jabatan target_jab ON ep.id_peg = target_jab.id_peg AND LOWER(target_jab.status_jab) = 'aktif'
   $where_sql
   ORDER BY COALESCE(ep.tanggal_otorisasi, ep.tanggal_pengajuan) DESC, ep.id_edit DESC
 ";
@@ -175,6 +221,12 @@ $qPending = mysqli_query($koneksi, $sql);
   .btn-primary-modern { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
   .btn-secondary-modern { background: #eff2f7; color: #5a6a85; }
   .btn-secondary-modern:hover { background: #e1e6ed; color: #333; }
+  .approval-filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    align-items: end;
+  }
 
   /* Table Styling */
   .table-responsive { border-radius: 0 0 16px 16px; }
@@ -226,22 +278,54 @@ $qPending = mysqli_query($koneksi, $sql);
       <div>
         <h3 class="page-title">Otorisasi Edit Data</h3>
         <p class="page-subtitle mb-0">
-          Kantor Akses: <strong><?php echo $is_all_kantor ? 'SEMUA KANTOR' : e($kode_kantor); ?></strong>
+          Kantor Akses: <strong><?php echo e($label_kantor_akses); ?></strong>
         </p>
       </div>
     </div>
   </div>
 </section>
 
+<script>
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('approvalFilterForm');
+    if (!form) return;
+    var timer = null;
+    var submitFilter = function() {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(function() { form.submit(); }, 250);
+    };
+    var fields = form.querySelectorAll('select, input[type="date"]');
+    for (var i = 0; i < fields.length; i++) {
+      fields[i].addEventListener('change', submitFilter);
+    }
+  });
+})();
+</script>
+
 <section class="content">
   <div class="container-fluid">
 
     <div class="card card-modern">
       <div class="card-header-modern">
-        <form method="get" class="row align-items-end">
+        <form method="get" class="approval-filter-form" id="approvalFilterForm">
           <input type="hidden" name="page" value="otorisasi-approval">
 
-          <div class="col-lg-3 col-md-6 col-12 mb-3 mb-lg-0">
+          <?php if (count($kantor_filter_options) > 1): ?>
+          <div>
+            <label class="form-label-modern">Kode Kantor</label>
+            <select name="kode_kantor" class="form-control input-modern">
+              <option value="">Semua Akses</option>
+              <?php foreach ($kantor_filter_options as $kode_opt): ?>
+                <option value="<?php echo e($kode_opt); ?>" <?php echo ($filter_kode_kantor === $kode_opt ? 'selected' : ''); ?>>
+                  <?php echo e($kode_opt); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <?php endif; ?>
+
+          <div>
             <label class="form-label-modern">Status Otorisasi</label>
             <select name="status" class="form-control input-modern">
               <?php foreach ($status_opt as $opt): ?>
@@ -252,7 +336,7 @@ $qPending = mysqli_query($koneksi, $sql);
             </select>
           </div>
 
-          <div class="col-lg-2 col-md-6 col-12 mb-3 mb-lg-0">
+          <div>
             <label class="form-label-modern">Tgl Berdasar</label>
             <select name="date_by" class="form-control input-modern">
               <option value="pengajuan" <?php echo ($date_by==='pengajuan'?'selected':''); ?>>Pengajuan</option>
@@ -260,25 +344,13 @@ $qPending = mysqli_query($koneksi, $sql);
             </select>
           </div>
 
-          <div class="col-lg-2 col-md-6 col-6 mb-3 mb-lg-0">
+          <div>
             <label class="form-label-modern">Dari</label>
             <input type="date" name="tgl_awal" class="form-control input-modern" value="<?php echo e($tgl_awal ? $tgl_awal : ''); ?>">
           </div>
-          <div class="col-lg-2 col-md-6 col-6 mb-3 mb-lg-0">
+          <div>
             <label class="form-label-modern">Sampai</label>
             <input type="date" name="tgl_akhir" class="form-control input-modern" value="<?php echo e($tgl_akhir ? $tgl_akhir : ''); ?>">
-          </div>
-
-          <div class="col-lg-3 col-md-12 col-12 mb-3 mb-lg-0">
-            <label class="form-label-modern d-none d-lg-block">&nbsp;</label>
-            <div class="d-flex filter-actions" style="gap: 10px;">
-              <button type="submit" class="btn btn-modern btn-primary-modern flex-fill">
-                <i class="fa fa-filter mr-2"></i> Terapkan
-              </button>
-              <a href="home-admin.php?page=otorisasi-approval" class="btn btn-modern btn-secondary-modern flex-fill">
-                <i class="fa fa-sync-alt mr-2"></i> Reset
-              </a>
-            </div>
           </div>
 
         </form>
@@ -310,9 +382,13 @@ $qPending = mysqli_query($koneksi, $sql);
                   
                   // Menentukan warna badge soft
                   $badge = 'badge-soft-secondary';
-                  if ($row['status_otorisasi']=='Menunggu')  $badge='badge-soft-warning';
-                  if ($row['status_otorisasi']=='Disetujui') $badge='badge-soft-success';
-                  if ($row['status_otorisasi']=='Ditolak')   $badge='badge-soft-danger';
+                  $status_row = $row['status_otorisasi'];
+                  if ($status_row === 'pending') $status_row = 'Menunggu';
+                  if ($status_row === 'approved') $status_row = 'Disetujui';
+                  if ($status_row === 'rejected') $status_row = 'Ditolak';
+                  if ($status_row=='Menunggu')  $badge='badge-soft-warning';
+                  if ($status_row=='Disetujui') $badge='badge-soft-success';
+                  if ($status_row=='Ditolak')   $badge='badge-soft-danger';
 
                   $waktu = ($date_by==='otorisasi' && $row['tanggal_otorisasi'])
                              ? $row['tanggal_otorisasi'] : $row['tanggal_pengajuan'];
@@ -324,7 +400,7 @@ $qPending = mysqli_query($koneksi, $sql);
                 <td><?php echo e(ucfirst($row['jenis_data'])); ?></td>
                 <td class="text-center">
                   <span class="badge badge-soft <?php echo $badge; ?>">
-                    <?php echo e($row['status_otorisasi']); ?>
+                    <?php echo e($status_row); ?>
                   </span>
                 </td>
                 <td>

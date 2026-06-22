@@ -1,10 +1,18 @@
 # ==== Folder yang tidak perlu di-push ====
 # /db/
-# /uploads/
-# /vendor/
+/uploads/
+/upload/
+/documents/
+/document/
+/dokumen/
+/files/
+/tmp/
+/temp/
+/cache/
+/vendor/
 /dist/koneksi.php
 # /komponen/
-# /plugins/
+/plugins/
 # /docs/
 /pages/assets/
 
@@ -12,6 +20,30 @@
 /db.sql
 /masq2971_simpeg (struktur only).sql
 /struktur-folder.txt
+/composer.phar
+*.sql
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.xlsx
+*.xls
+*.csv
+*.pdf
+!pages/**/template-*.xlsx
+!pages/**/template-*.xls
+
+# ==== Upload dan hasil generate ====
+uploads/**
+upload/**
+documents/**
+document/**
+dokumen/**
+files/**
+tmp/**
+temp/**
+cache/**
 
 # ==== Sistem dan cache ====
 *.log

@@ -1,11 +1,21 @@
 <?php
 session_start();
+include "config.php";
+ob_start("simpeg_normalize_markup");
 include "dist/koneksi.php";
 include "dist/functions.php";
+include "dist/sso-auth.php";
 // include "cek.php";
 
+simpeg_restore_session_from_sso_cookie($conn);
+
+if (!isset($_SESSION['id_user'])) {
+  header("Location: " . (function_exists('base_url') ? base_url('index.php') : 'index.php'));
+  exit;
+}
+
 //cekAkses(['Admin']);
-aturSessionTimeout(1800, "index.php");
+aturSessionTimeout(1800, function_exists('base_url') ? base_url('index.php') : "index.php");
 
 $App = mysqli_query($conn, "SELECT * FROM tb_config WHERE id_app='1'");
 $set = mysqli_fetch_array($App);

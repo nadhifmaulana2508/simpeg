@@ -1,125 +1,148 @@
 <?php
-// 1. Matikan error display agar path file tidak bocor ke user
 ini_set('display_errors', 0);
 error_reporting(0);
 
-session_start();
+if (session_id() === '') {
+    session_start();
+}
+
 include "../../dist/koneksi.php";
 
-// 2. KEAMANAN: Cek apakah user sudah login?
 if (empty($_SESSION['id_user'])) {
     http_response_code(403);
-    exit(json_encode(['error' => 'Akses ditolak']));
+    header('Content-Type: application/json');
+    exit(json_encode(array('error' => 'Akses ditolak')));
 }
 
-// Helper untuk mencegah XSS (Output Encoding)
-function h($s) {
-    return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+function purna_h($value) {
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-// Kolom yang diizinkan untuk sorting (Whitelist)
-$columns = ['p.id_peg', 'p.nama', 'p.tempat_lhr', 'j.jabatan', 'm.jns_mutasi', 'm.tgl_mutasi', 'p.telp', 'action'];
+$columns = array(
+    0 => 'p.nama',
+    1 => 'p.tgl_lhr',
+    2 => 'j.jabatan',
+    3 => 'm.jns_mutasi',
+    4 => 'm.tgl_mutasi'
+);
 
-// Input Validation & Sanitization
-$limit  = isset($_GET['length']) ? intval($_GET['length']) : 10;
-$offset = isset($_GET['start']) ? intval($_GET['start']) : 0;
-$search = isset($_GET['search']['value']) ? mysqli_real_escape_string($conn, $_GET['search']['value']) : '';
-$draw   = isset($_GET['draw']) ? intval($_GET['draw']) : 1;
+$limit = isset($_GET['length']) ? max(1, (int) $_GET['length']) : 10;
+$offset = isset($_GET['start']) ? max(0, (int) $_GET['start']) : 0;
+$draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 1;
+$search = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
+$orderColumnIndex = isset($_GET['order'][0]['column']) ? (int) $_GET['order'][0]['column'] : 0;
+$orderDir = (isset($_GET['order'][0]['dir']) && strtolower($_GET['order'][0]['dir']) === 'desc') ? 'DESC' : 'ASC';
+$orderColumn = isset($columns[$orderColumnIndex]) ? $columns[$orderColumnIndex] : 'p.nama';
 
-// Sorting Logic (Lebih Aman)
-$orderColumnIndex = isset($_GET['order'][0]['column']) ? intval($_GET['order'][0]['column']) : 1; // Default ke nama
-$orderColumn      = isset($columns[$orderColumnIndex]) ? $columns[$orderColumnIndex] : 'p.nama';
-// Validasi arah sort (ASC/DESC saja)
-$orderDirRaw      = isset($_GET['order'][0]['dir']) ? strtolower($_GET['order'][0]['dir']) : 'asc';
-$orderDir         = ($orderDirRaw === 'desc') ? 'DESC' : 'ASC';
+$safeSearch = mysqli_real_escape_string($conn, $search);
 
-// 3. LOGIKA QUERY DASAR
-// Kita gunakan subquery mutasi agar data tidak duplikat
 $sqlBase = "
     FROM tb_pegawai p
-    LEFT JOIN tb_jabatan j ON p.id_peg = j.id_peg AND j.status_jab = 'Aktif'
-    JOIN (
-        SELECT id_peg, jns_mutasi, MAX(tgl_mutasi) AS tgl_mutasi
-        FROM tb_mutasi
-        WHERE jns_mutasi IN ('Pensiun', 'Pensiun Dini', 'Meninggal Dunia', 'Pengunduran Diri', 'PTDH')
-        GROUP BY id_peg
-    ) m ON p.id_peg = m.id_peg
-    WHERE 1=1 
+    INNER JOIN (
+        SELECT m1.id_peg, m1.jns_mutasi, m1.tgl_mutasi
+        FROM tb_mutasi m1
+        INNER JOIN (
+            SELECT id_peg, MAX(tgl_mutasi) AS tgl_mutasi
+            FROM tb_mutasi
+            WHERE jns_mutasi IN ('Pensiun', 'Pensiun Dini', 'Meninggal Dunia', 'Pengunduran Diri', 'PTDH')
+            GROUP BY id_peg
+        ) last_mutasi ON last_mutasi.id_peg = m1.id_peg AND last_mutasi.tgl_mutasi = m1.tgl_mutasi
+    ) m ON m.id_peg = p.id_peg
+    LEFT JOIN tb_jabatan j ON j.id_jab = (
+        SELECT j2.id_jab
+        FROM tb_jabatan j2
+        WHERE j2.id_peg = p.id_peg
+        ORDER BY (CASE WHEN j2.status_jab = 'Aktif' THEN 0 ELSE 1 END), j2.tmt_jabatan DESC, j2.id_jab DESC
+        LIMIT 1
+    )
+    WHERE 1=1
 ";
-// Catatan: Saya ganti LEFT JOIN ke JOIN pada tabel 'm' karena WHERE clause Anda (m.jns_mutasi IS NOT NULL)
-// secara efektif membuatnya jadi INNER JOIN. Ini lebih cepat secara performa.
 
-// Filter Kepala Cabang
-if (isset($_SESSION['hak_akses']) && strtolower($_SESSION['hak_akses']) == 'kepala') {
+if (isset($_SESSION['hak_akses']) && strtolower($_SESSION['hak_akses']) === 'kepala' && !empty($_SESSION['kode_kantor'])) {
     $kode_kantor = mysqli_real_escape_string($conn, $_SESSION['kode_kantor']);
-    $sqlBase .= " AND j.unit_kerja = '$kode_kantor'";
+    $sqlBase .= " AND j.unit_kerja = '".$kode_kantor."'";
 }
 
-// Simpan query dasar untuk menghitung Total Records (Tanpa filter search)
-$sqlTotal = "SELECT COUNT(*) AS total " . $sqlBase;
-$resTotal = mysqli_query($conn, $sqlTotal);
-$rowTotal = mysqli_fetch_assoc($resTotal);
-$totalAll = isset($rowTotal['total']) ? intval($rowTotal['total']) : 0;
-
-// 4. FILTER PENCARIAN
 if ($search !== '') {
     $sqlBase .= " AND (
-        p.nama LIKE '%$search%' OR
-        p.id_peg LIKE '%$search%' OR
-        j.jabatan LIKE '%$search%' OR
-        m.jns_mutasi LIKE '%$search%'
+        p.id_peg LIKE '%".$safeSearch."%' OR
+        p.nama LIKE '%".$safeSearch."%' OR
+        p.tempat_lhr LIKE '%".$safeSearch."%' OR
+        COALESCE(j.jabatan, '') LIKE '%".$safeSearch."%' OR
+        m.jns_mutasi LIKE '%".$safeSearch."%'
     )";
 }
 
-// Hitung Total Filtered (Setelah kena search)
-$sqlFiltered = "SELECT COUNT(*) AS total " . $sqlBase;
-$resultFiltered = mysqli_query($conn, $sqlFiltered);
-$rowFiltered = mysqli_fetch_assoc($resultFiltered);
-$totalFiltered = isset($rowFiltered['total']) ? intval($rowFiltered['total']) : 0;
+$sqlTotal = "
+    SELECT COUNT(*) AS total
+    FROM (
+        SELECT DISTINCT p.id_peg
+        ".$sqlBase."
+    ) base_count
+";
+$queryTotal = mysqli_query($conn, $sqlTotal);
+$rowTotal = $queryTotal ? mysqli_fetch_assoc($queryTotal) : array('total' => 0);
+$totalFiltered = isset($rowTotal['total']) ? (int) $rowTotal['total'] : 0;
 
-// 5. AMBIL DATA FINAL
-$sqlData = "SELECT 
-    p.id_peg, 
-    p.nama, 
-    p.tempat_lhr, 
-    p.tgl_lhr,
-    j.jabatan,
-    m.jns_mutasi,
-    m.tgl_mutasi,
-    p.telp 
-    " . $sqlBase . " 
-    ORDER BY $orderColumn $orderDir 
-    LIMIT $offset, $limit";
+$sqlTotalAll = "
+    SELECT COUNT(*) AS total
+    FROM (
+        SELECT DISTINCT p.id_peg
+        FROM tb_pegawai p
+        INNER JOIN (
+            SELECT id_peg, MAX(tgl_mutasi) AS tgl_mutasi
+            FROM tb_mutasi
+            WHERE jns_mutasi IN ('Pensiun', 'Pensiun Dini', 'Meninggal Dunia', 'Pengunduran Diri', 'PTDH')
+            GROUP BY id_peg
+        ) m ON m.id_peg = p.id_peg
+    ) total_purna
+";
+$queryTotalAll = mysqli_query($conn, $sqlTotalAll);
+$rowTotalAll = $queryTotalAll ? mysqli_fetch_assoc($queryTotalAll) : array('total' => 0);
+$totalAll = isset($rowTotalAll['total']) ? (int) $rowTotalAll['total'] : 0;
+
+$sqlData = "
+    SELECT
+        p.id_peg,
+        p.nama,
+        p.tempat_lhr,
+        p.tgl_lhr,
+        p.telp,
+        p.foto,
+        p.jk,
+        COALESCE(j.jabatan, '-') AS jabatan,
+        m.jns_mutasi,
+        m.tgl_mutasi
+    ".$sqlBase."
+    GROUP BY p.id_peg
+    ORDER BY ".$orderColumn." ".$orderDir."
+    LIMIT ".$offset.", ".$limit."
+";
 
 $result = mysqli_query($conn, $sqlData);
-$data = [];
+$data = array();
 
-while ($row = mysqli_fetch_assoc($result)) {
-    // Format Tanggal
-    $ttl = h($row['tempat_lhr']) . ', ' . ($row['tgl_lhr'] ? date('d-m-Y', strtotime($row['tgl_lhr'])) : '-');
-    $tgl_pensiun = $row['tgl_mutasi'] ? date('d-m-Y', strtotime($row['tgl_mutasi'])) : '-';
-    
-    // Tombol Action
-    $btnAction = '<a href="home-admin.php?page=view-detail-data-pegawai&id_peg=' . h($row['id_peg']) . '" class="btn btn-sm btn-outline-info" title="Detail"><i class="fa fa-folder-open"></i></a>';
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $ttl = purna_h($row['tempat_lhr']) . ', ' . ($row['tgl_lhr'] ? date('d-m-Y', strtotime($row['tgl_lhr'])) : '-');
+        $tgl_pensiun = $row['tgl_mutasi'] ? date('d-m-Y', strtotime($row['tgl_mutasi'])) : '-';
 
-    $data[] = [
-        'id_peg'       => h($row['id_peg']),
-        'nama'         => h($row['nama']),
-        'ttl'          => $ttl,
-        'jabatan'      => h($row['jabatan']),
-        'status_kepeg' => h($row['jns_mutasi']),
-        'tgl_pensiun'  => $tgl_pensiun,
-        'telp'         => h($row['telp']),
-        'action'       => $btnAction
-    ];
+        $data[] = array(
+            'id_peg' => purna_h($row['id_peg']),
+            'nama' => purna_h($row['nama']),
+            'ttl' => $ttl,
+            'jabatan' => purna_h($row['jabatan']),
+            'status_kepeg' => purna_h($row['jns_mutasi']),
+            'tgl_pensiun' => $tgl_pensiun,
+            'telp' => purna_h($row['telp'])
+        );
+    }
 }
 
-// Output JSON
 header('Content-Type: application/json');
-echo json_encode([
-    'draw'            => $draw,
-    'recordsTotal'    => $totalAll,
+echo json_encode(array(
+    'draw' => $draw,
+    'recordsTotal' => $totalAll,
     'recordsFiltered' => $totalFiltered,
-    'data'            => $data
-]);
-?>
+    'data' => $data
+));

@@ -24,10 +24,11 @@ Role yang saat ini terlihat di aplikasi:
 
 ```text
 .
-+-- api/                         # Calon endpoint API internal, saat ini masih kosong
++-- api/                         # Bootstrap API internal dan endpoint awal
 +-- assets/                      # Asset tambahan aplikasi
 +-- assets-eform/                # Asset untuk e-form kredit
 +-- db/                          # Dump/struktur database SIMPEG
++-- docs/                        # Dokumentasi pengembangan, termasuk test API
 +-- dist/                        # Koneksi database, helper, AdminLTE build, asset utama
 +-- pages/                       # Modul aplikasi per fitur
 |   +-- config/                  # Pengaturan aplikasi
@@ -114,6 +115,8 @@ composer install
 
 ```text
 http://localhost:8081/dummy/
+http://localhost:8081/dummy/dashboard
+http://localhost:8081/dummy/form-view-data-pegawai
 ```
 
 ## Dependency
@@ -128,13 +131,50 @@ Dependency Composer saat ini:
 
 Library ini dipakai untuk kebutuhan import/export Excel.
 
+## Progress `dev-app`
+
+Progress per 18 Juni 2026 di branch `dev-app`:
+
+- [x] Menambahkan helper base URL di `config.php` untuk local dan server.
+- [x] Menyiapkan routing bersih awal lewat `.htaccess`:
+  - `/dashboard`
+  - `/{page}`
+  - `/api`
+  - `/api/{endpoint}`
+- [x] Menambahkan normalizer output agar link lama `home-admin.php?page=...` otomatis diarahkan ke route baru saat halaman dirender.
+- [x] Merapikan sidebar menjadi lebih modern dan berbasis konfigurasi menu.
+- [x] Menambahkan fondasi UI global:
+  - `dist/css/simpeg-modern.css`
+  - `dist/js/simpeg-app.js`
+- [x] Menyamakan alur loading global untuk navigasi dan submit form.
+- [x] Memperluas styling global agar form, modal, tabel, tab, dan tombol lebih konsisten di mobile dan desktop.
+- [x] Menghapus `/app` dari URL route baru.
+- [x] Memperbaiki bug loader global yang sempat error di halaman data pegawai.
+- [x] Memperkuat halaman `form-view-data-pegawai` sebagai acuan template list/view data yang lebih modern.
+- [x] Menambahkan approval perubahan data keluarga untuk role `user` melalui `tb_edit_pending`.
+- [x] Menambahkan akses approval untuk Kabid Operasional/Kepala sesuai unit kerja.
+- [x] Membuat bootstrap API internal pertama.
+- [x] Menambahkan dokumentasi test API awal di `docs/API.md`.
+- [x] Memperbaiki endpoint daftar pegawai aktif, non-jabatan, dan purna agar lebih aman untuk data yang belum punya jabatan atau sudah purna.
+- [x] Menyesuaikan sidebar desktop agar default compact dan terbuka saat hover.
+- [x] Memperbaiki tampilan search sidebar agar lebih rapi.
+- [x] Mulai merapikan cluster halaman `pages/pegawai` agar template list, form, import, dan detail lebih konsisten.
+- [x] Merapikan `profil-pegawai` agar user bisa ajukan perubahan biodata sendiri lewat approval.
+- [x] Menambahkan approval `biodata_update` di modul otorisasi untuk role user pada profil pegawai.
+- [x] Merapikan tampilan `form-ganti-foto` dan `form-ubah-id-peg` agar mengikuti theme modern yang sama.
+- [x] Mengamankan modal gaji dan pangkat di profil pegawai supaya tidak error saat data tanggal/riwayat belum tersedia.
+- [ ] Merapikan halaman-halaman custom yang masih punya CSS inline besar agar benar-benar seragam dengan theme baru.
+- [ ] Migrasi source code lama `home-admin.php?page=...` ke helper route baru secara bertahap di level file.
+- [ ] Memecah query langsung di layer FE menjadi konsumsi REST API.
+- [ ] Audit kompatibilitas penuh untuk upgrade ke PHP 8.
+
 ## Catatan API Internal
 
-Folder `api/` sudah ada, tetapi file berikut masih kosong:
+Folder `api/` sekarang sudah punya bootstrap awal:
 
-- `api/index.php`
-- `api/controllers.php`
-- `api/helpers/response.php`
+- `api/index.php` sebagai router sederhana
+- `api/controllers.php` untuk controller endpoint awal
+- `api/helpers/response.php` untuk response JSON konsisten
 
 Rencana pengembangan API:
 
@@ -145,12 +185,21 @@ Rencana pengembangan API:
 - Menambahkan autentikasi API, misalnya token internal/API key atau session/token terpisah.
 - Membatasi akses berdasarkan role dan kepemilikan data.
 
-Contoh arah endpoint yang bisa dibuat:
+Endpoint yang sudah disiapkan saat ini:
 
 ```text
+GET    /api
+GET    /api/health
 GET    /api/pegawai
 GET    /api/pegawai/{id_peg}
 GET    /api/pegawai/{id_peg}/keluarga
+```
+
+Dokumentasi test API awal ada di [docs/API.md](docs/API.md).
+
+Contoh arah endpoint lanjutan:
+
+```text
 POST   /api/pegawai/{id_peg}/keluarga/anak
 PUT    /api/pegawai/{id_peg}/keluarga/anak/{id_anak}
 POST   /api/pegawai/{id_peg}/keluarga/pasangan
@@ -166,11 +215,14 @@ Kondisi saat ini:
 - Role `user` diarahkan ke `home-admin.php?page=profil-pegawai`.
 - Pada profil, user bisa melihat data sendiri.
 - User bisa mengganti foto sendiri.
-- Edit biodata/riwayat/keluarga masih dibatasi untuk `admin` atau `kepala`.
+- User sudah bisa mengajukan perubahan biodata dan perubahan keluarga sendiri dari halaman profil.
+- Pengajuan biodata dan keluarga masuk ke approval Kabid Operasional/Kepala cabang melalui `tb_edit_pending`.
+- Edit langsung tanpa approval untuk biodata/riwayat strategis tetap dibatasi ke `admin` atau `kepala`.
 
 Target perubahan:
 
 - Role `user` bisa menambah dan mengubah data keluarga miliknya sendiri.
+- Role `user` bisa mengajukan perubahan biodata miliknya sendiri.
 - Data keluarga yang dimaksud:
   - suami/istri di `tb_suamiistri`
   - anak di `tb_anak`
@@ -214,10 +266,15 @@ Beberapa hal yang perlu diperhatikan sebelum aplikasi dipakai luas sebagai API i
 
 ## Roadmap Dekat
 
-- [ ] Membuat response helper JSON di `api/helpers/response.php`.
-- [ ] Membuat router sederhana di `api/index.php`.
-- [ ] Membuat controller API awal untuk data pegawai dan keluarga.
-- [ ] Membuka fitur tambah/edit keluarga untuk role `user`.
-- [ ] Menentukan apakah perubahan user langsung tersimpan atau masuk approval dulu.
+- [x] Membuat response helper JSON di `api/helpers/response.php`.
+- [x] Membuat router sederhana di `api/index.php`.
+- [x] Membuat controller API awal untuk data pegawai dan keluarga.
+- [x] Membuka fitur tambah/edit keluarga untuk role `user` dengan alur approval.
+- [x] Menentukan bahwa perubahan keluarga user masuk approval dulu.
+- [x] Menambahkan fondasi route helper dan normalizer URL global.
+- [x] Menambahkan dokumentasi test API awal.
+- [ ] Menyelaraskan halaman lama yang masih punya inline CSS/JS sendiri dengan theme global.
+- [ ] Memindahkan navigasi utama ke helper route baru langsung di source file secara menyeluruh.
+- [ ] Menambahkan autentikasi untuk konsumsi API internal.
 - [ ] Audit kompatibilitas PHP 8.
 - [ ] Rapikan file duplikat dan file eksperimen lama.

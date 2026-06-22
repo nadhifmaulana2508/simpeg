@@ -128,6 +128,8 @@
 <script src="plugins/datatables-buttons/js/buttons.print.min.js"></script>
 
 <script src="plugins/select2/js/select2.full.min.js"></script>
+<?php $simpeg_app_js_ver = file_exists('dist/js/simpeg-app.js') ? filemtime('dist/js/simpeg-app.js') : time(); ?>
+<script src="dist/js/simpeg-app.js?v=<?php echo $simpeg_app_js_ver; ?>"></script>
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {

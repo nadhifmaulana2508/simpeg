@@ -1,20 +1,28 @@
 <style>
-    .upload-container { background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 30px; }
-    .drop-zone { border: 2px dashed #cbd5e0; border-radius: 15px; padding: 40px; text-align: center; background-color: #f8fafc; transition: all 0.3s ease; cursor: pointer; position: relative; }
-    .drop-zone:hover, .drop-zone.dragover { border-color: #007bff; background-color: #e3f2fd; transform: scale(1.01); }
+    .upload-container { background: rgba(255,255,255,0.94); border-radius: 20px; box-shadow: var(--simpeg-shadow); padding: 30px; border: 1px solid rgba(223, 230, 215, 0.9); }
+    .drop-zone { border: 2px dashed #b9d7cf; border-radius: 18px; padding: 44px; text-align: center; background: linear-gradient(180deg, #fbfdfb 0%, #f3f8f5 100%); transition: all 0.25s ease; cursor: pointer; position: relative; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--simpeg-primary); background: #edf8f4; transform: translateY(-1px); }
     .file-input-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
-    .file-preview { display: none; margin-top: 20px; padding: 15px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; }
-    .step-badge { background: #007bff; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-block; text-align: center; line-height: 28px; font-weight: bold; margin-right: 10px; }
+    .file-preview { display: none; margin-top: 20px; padding: 15px; background: #fff; border: 1px solid var(--simpeg-border); border-radius: 14px; }
+    .step-badge { background: linear-gradient(135deg, var(--simpeg-primary), var(--simpeg-primary-strong)); color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-block; text-align: center; line-height: 28px; font-weight: bold; margin-right: 10px; }
 </style>
 
-<section class="content p-2">
+<section class="content simpeg-page">
   <div class="container-fluid">
+    <div class="simpeg-form-shell">
+    <div class="simpeg-page-header">
+        <div>
+            <h1 class="simpeg-page-title">Import Data Pegawai</h1>
+            <p class="simpeg-page-subtitle">Unduh template, unggah file Excel, lalu cek preview sebelum data disimpan ke sistem.</p>
+        </div>
+        <a href="<?php echo function_exists('page_url') ? page_url('form-view-data-pegawai') : 'home-admin.php?page=form-view-data-pegawai'; ?>" class="btn btn-light border"><i class="fas fa-arrow-left mr-2"></i>Kembali</a>
+    </div>
     <div class="row justify-content-center">
         <div class="col-md-10">
             <div class="upload-container">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h3 class="m-0 font-weight-bold text-dark"><i class="fas fa-users text-primary mr-2"></i> Import Pegawai Baru</h3>
-                    <a href="home-admin.php?page=form-view-data-pegawai" class="btn btn-light btn-sm rounded-pill px-3"><i class="fas fa-times"></i> Tutup</a>
+                    <h3 class="m-0 font-weight-bold text-dark"><i class="fas fa-users text-primary mr-2"></i>Import Pegawai Baru</h3>
+                    <span class="simpeg-stat-chip"><i class="fas fa-file-import"></i> Mode batch import</span>
                 </div>
 
                 <div class="alert alert-secondary bg-white border shadow-sm rounded-lg mb-4">
@@ -24,7 +32,7 @@
                             <h6 class="m-0 text-dark font-weight-bold">Persiapan Data</h6>
                             <small class="text-muted">Unduh template Excel Data Pegawai.</small>
                         </div>
-                        <a href="pages/pegawai/download-template-pegawai.php" target="_blank" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm">
+                        <a href="pages/pegawai/download-template-pegawai.php" target="_blank" class="btn btn-success btn-sm px-4 shadow-sm">
                             <i class="fas fa-download mr-1"></i> Download Template
                         </a>
                     </div>
@@ -55,13 +63,14 @@
                         </div>
                     </div>
                     <div class="text-center mt-4">
-                        <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm"><i class="fas fa-eye mr-2"></i> Preview Data</button>
+                        <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm"><i class="fas fa-eye mr-2"></i> Preview Data</button>
                     </div>
                 </form>
 
                 <div id="preview-area" class="mt-5"></div>
             </div>
         </div>
+    </div>
     </div>
   </div>
 </section>

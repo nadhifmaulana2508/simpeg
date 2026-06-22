@@ -6,6 +6,22 @@ ini_set('display_errors', 0);
 error_reporting(0);
 
 include __DIR__ . '/../../dist/koneksi.php';
+@include_once __DIR__ . '/../../dist/functions.php';
+
+if (!function_exists('fgf_page_url')) {
+    function fgf_page_url($page, $params = array()) {
+        if (function_exists('page_url')) {
+            return page_url($page, $params);
+        }
+
+        $url = 'home-admin.php?page=' . urlencode($page);
+        if (!empty($params)) {
+            $url .= '&' . http_build_query($params);
+        }
+
+        return $url;
+    }
+}
 
 // Validasi ID Pegawai
 if (!isset($_GET['id_peg'])) die("Error. No Kode Selected!");
@@ -17,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Ambil URL Redirect
     $redirect_url = isset($_POST['redirect_back']) && !empty($_POST['redirect_back']) 
                     ? $_POST['redirect_back'] 
-                    : 'home-admin.php?page=profil-pegawai';
+                    : fgf_page_url('profil-pegawai');
 
     // Validasi Data Gambar
     if (!isset($_POST['cropped_image']) || empty($_POST['cropped_image'])) {
@@ -76,9 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $qLama = mysqli_query($conn, "SELECT foto FROM tb_pegawai WHERE id_peg='$id_peg'");
         if ($qLama && mysqli_num_rows($qLama) > 0) {
             $rLama = mysqli_fetch_assoc($qLama);
-            $fileLama = $folder_tujuan . $rLama['foto'];
-            if (!empty($rLama['foto']) && file_exists($fileLama) && is_file($fileLama)) {
-                @unlink($fileLama); // Pakai @ biar gak error warning
+            $fileLama = function_exists('simpeg_resolve_photo_path')
+                ? simpeg_resolve_photo_path($rLama['foto'], '', false)
+                : ($folder_tujuan . $rLama['foto']);
+            if (!empty($rLama['foto']) && strpos($fileLama, 'pages/assets/foto/') === 0 && file_exists($fileLama) && is_file($fileLama)) {
+                @unlink($fileLama);
             }
         }
 
@@ -120,9 +138,9 @@ function echo_swal($title, $text, $icon, $redirect = null) {
 
 // --- TAMPILAN FORM (METHOD GET) ---
 
-$redirect_back = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'home-admin.php?page=profil-pegawai';
+$redirect_back = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : fgf_page_url('profil-pegawai');
 
-$q = mysqli_query($conn, "SELECT nama, foto FROM tb_pegawai WHERE id_peg = '$id_peg'");
+$q = mysqli_query($conn, "SELECT nama, foto, jk FROM tb_pegawai WHERE id_peg = '$id_peg'");
 if (!$q || mysqli_num_rows($q) == 0) {
     echo "<div class='alert alert-warning'>Data pegawai tidak ditemukan.</div>";
     exit;
@@ -130,57 +148,57 @@ if (!$q || mysqli_num_rows($q) == 0) {
 $peg = mysqli_fetch_assoc($q);
 $nama = htmlspecialchars($peg['nama'], ENT_QUOTES, 'UTF-8');
 $foto_file = trim($peg['foto']);
+$gender = isset($peg['jk']) ? $peg['jk'] : 'L';
 
 // Path Foto Display
-$foto_display = 'dist/img/avatar5.png'; // Default
-if (!empty($foto_file)) {
-    $path_fisik = __DIR__ . '/../../pages/assets/foto/' . $foto_file;
-    if (file_exists($path_fisik)) {
-        // Tambah time() biar cache browser ke-refresh
-        $foto_display = 'pages/assets/foto/' . $foto_file . '?v=' . time(); 
-    }
-}
+$foto_display = function_exists('simpeg_resolve_photo_path')
+    ? simpeg_resolve_photo_path($foto_file, $gender)
+    : 'dist/img/avatar5.png';
 ?>
 
 <style>
-    .crop-container { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .photo-page { padding-top: 18px; padding-bottom: 32px; }
+    .photo-shell { background: linear-gradient(180deg, #f4fbfa 0%, #ffffff 100%); border-radius: 22px; padding: 22px; }
+    .photo-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+    .photo-title { font-size: 1.65rem; font-weight: 800; color: #173534; margin: 0; }
+    .photo-subtitle { color: #607270; margin: 6px 0 0; }
+    .crop-container { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; padding: 24px; background: #fff; border-radius: 20px; border: 1px solid #e2efed; box-shadow: 0 20px 40px rgba(15,118,110,0.08); }
     .editor-area { flex: 1; min-width: 300px; max-width: 500px; display: flex; flex-direction: column; align-items: center; }
-    .crop-frame { width: 320px; height: 320px; border-radius: 50%; border: 8px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.15); overflow: hidden; position: relative; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAACpJREFUeNpiVk6xcgYDCgAjIyMp+k0YGBgY/v///x8Hxk+00Q9G4w8ABBgAVj0E0/2/j/QAAAAASUVORK5CYII='); cursor: grab; }
+    .crop-frame { width: 320px; height: 320px; border-radius: 50%; border: 8px solid #fff; box-shadow: 0 12px 30px rgba(15,118,110,0.18); overflow: hidden; position: relative; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAACpJREFUeNpiVk6xcgYDCgAjIyMp+k0YGBgY/v///x8Hxk+00Q9G4w8ABBgAVj0E0/2/j/QAAAAASUVORK5CYII='); cursor: grab; }
     .crop-frame:active { cursor: grabbing; }
     .crop-image { position: absolute; top: 0; left: 0; max-width: none; user-select: none; -webkit-user-drag: none; transform-origin: center center; }
-    .preview-area { flex: 1; min-width: 250px; max-width: 400px; text-align: center; border-left: 1px solid #eee; padding-left: 30px; display: flex; flex-direction: column; justify-content: center; }
-    .preview-circle { width: 160px; height: 160px; border-radius: 50%; overflow: hidden; border: 4px solid #e9ecef; margin: 0 auto 20px; background: #f8f9fa; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .preview-area { flex: 1; min-width: 250px; max-width: 400px; text-align: center; border-left: 1px solid #e7efee; padding-left: 30px; display: flex; flex-direction: column; justify-content: center; }
+    .preview-circle { width: 160px; height: 160px; border-radius: 50%; overflow: hidden; border: 4px solid #e9ecef; margin: 0 auto 20px; background: #f8f9fa; box-shadow: 0 10px 24px rgba(0,0,0,0.1); }
     .control-group { width: 100%; margin-top: 20px; }
     .range-slider { width: 100%; margin: 15px 0; cursor: pointer; }
     .helper-text { font-size: 13px; color: #888; margin-top: 5px; text-align: center; }
+    .photo-panel-title { color: #173534; font-size: 1rem; font-weight: 800; }
+    .photo-note { border: 1px solid #d7e9e6; background: #f3fbfa; color: #446260; border-radius: 14px; padding: 12px 14px; font-size: 0.9rem; margin-bottom: 20px; }
     .btn-block { width: 100%; display: block; }
     @media(max-width: 768px) {
         .preview-area { border-left: none; padding-left: 0; border-top: 1px solid #eee; padding-top: 20px; }
         .crop-container { gap: 15px; }
+        .photo-header { flex-direction: column; }
     }
 </style>
 
-<section class="content-header">
+<section class="content photo-page">
     <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6"><h1>Ganti Foto Pegawai</h1></div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Home</a></li>
-                    <li class="breadcrumb-item active">Ganti Foto</li>
-                </ol>
+        <div class="photo-shell">
+            <div class="photo-header">
+                <div>
+                    <h1 class="photo-title">Ganti Foto Pegawai</h1>
+                    <p class="photo-subtitle">Perbarui foto profil untuk <strong><?= $nama ?></strong> dengan alur crop yang konsisten.</p>
+                </div>
+                <a href="<?= htmlspecialchars($redirect_back) ?>" class="btn btn-outline-secondary">
+                    <i class="fa fa-arrow-left mr-1"></i> Kembali
+                </a>
             </div>
-        </div>
-    </div>
-</section>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="card card-primary card-outline">
-            <div class="card-header">
-                <h3 class="card-title">Upload Foto untuk <b><?= $nama ?></b></h3>
+            <div class="photo-note">
+                Pastikan wajah berada di tengah lingkaran. Hasil foto akan langsung dipakai di profil pegawai.
             </div>
-            <div class="card-body">
+
                 <div class="crop-container">
                     
                     <div class="editor-area">
@@ -200,14 +218,14 @@ if (!empty($foto_file)) {
                     </div>
 
                     <div class="preview-area">
-                        <h5 class="mb-3 text-muted font-weight-bold">Preview Hasil</h5>
+                        <h5 class="mb-3 photo-panel-title">Preview Hasil</h5>
                         <canvas id="previewCanvas" class="preview-circle" width="300" height="300"></canvas>
                         
                         <div class="mt-4" style="width: 100%;">
                             <button id="btnSave" class="btn btn-primary btn-block btn-lg shadow-sm mb-2">
                                 <i class="fas fa-save mr-1"></i> Simpan Foto
                             </button>
-                            <a href="<?= htmlspecialchars($redirect_back) ?>" class="btn btn-default btn-block">
+                            <a href="<?= htmlspecialchars($redirect_back) ?>" class="btn btn-light btn-block">
                                 <i class="fas fa-times mr-1"></i> Batal
                             </a>
                         </div>
@@ -215,7 +233,6 @@ if (!empty($foto_file)) {
                     </div>
 
                 </div>
-            </div>
         </div>
     </div>
 </section>

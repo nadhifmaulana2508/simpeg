@@ -18,19 +18,9 @@ $dUserPeg = mysqli_fetch_assoc($qUserPeg);
 // Logic Penentuan Foto
 $foto_db    = isset($dUserPeg['foto']) ? $dUserPeg['foto'] : '';
 $gender     = isset($dUserPeg['jk']) ? $dUserPeg['jk'] : 'L';
-
-// Path File Fisik (Relative terhadap home-admin.php)
-$path_fisik = "pages/assets/foto/" . $foto_db; 
-
-// Default Avatar (Jika foto tidak ada/kosong)
-$avatar_def = ($gender == 'Perempuan' || $gender == 'P' || $gender == 'Wanita') ? 'dist/img/avatar3.png' : 'dist/img/avatar5.png';
-
-// Cek apakah file ada di folder
-if (!empty($foto_db) && file_exists($path_fisik)) {
-    $foto_profil = $path_fisik . "?t=" . time(); // Tambah time() biar gak cache browser
-} else {
-    $foto_profil = $avatar_def;
-}
+$foto_profil = function_exists('simpeg_resolve_photo_path')
+    ? simpeg_resolve_photo_path($foto_db, $gender)
+    : simpeg_avatar_default($gender);
 
 // --- 2. LOGIC NOTIFIKASI (SAMA SEPERTI SEBELUMNYA) ---
 $jumlahNotif = 0;
@@ -44,21 +34,21 @@ if ($hak_akses == 'kepala') {
             FROM tb_edit_pending ep
             JOIN tb_pegawai p ON p.id_peg = ep.id_peg
             JOIN tb_jabatan j ON j.id_peg = p.id_peg AND j.status_jab = 'Aktif'
-            WHERE ep.status_otorisasi = 'pending' AND j.unit_kerja = '$kode_kantor'
+            WHERE ep.status_otorisasi IN ('pending', 'Menunggu') AND j.unit_kerja = '$kode_kantor'
             ORDER BY ep.tanggal_pengajuan DESC LIMIT 5
         ");
         $jumlahNotif = $qNotif ? mysqli_num_rows($qNotif) : 0;
-        $targetLink = 'home-admin.php?page=otorisasi-approval';
+        $targetLink = function_exists('page_url') ? page_url('otorisasi-approval') : 'home-admin.php?page=otorisasi-approval';
     }
 } else {
     $qNotif = mysqli_query($conn, "
         SELECT id_notif, pesan AS judul, link_aksi, waktu_notif 
         FROM tb_notifikasi 
-        WHERE id_user = '$id_user' AND status_baca = 'unread' 
+        WHERE id_user = '$id_user' AND status_baca IN ('unread', 'Belum') 
         ORDER BY waktu_notif DESC LIMIT 5
     ");
     $jumlahNotif = $qNotif ? mysqli_num_rows($qNotif) : 0;
-    $targetLink = 'home-admin.php?page=notifikasi-user';
+    $targetLink = function_exists('page_url') ? page_url('notifikasi-user') : 'home-admin.php?page=notifikasi-user';
 }
 ?>
 
@@ -68,7 +58,11 @@ if ($hak_akses == 'kepala') {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?php echo isset($set['desc_app']) ? $set['desc_app'] : 'SIMPEG App'; ?></title>
-  <link rel="icon" type="image/png" href="dist/img/bkk.png">
+  <base href="<?php echo function_exists('base_url') ? htmlspecialchars(base_url(), ENT_QUOTES, 'UTF-8') : '/'; ?>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="<?php echo function_exists('asset_url') ? htmlspecialchars(asset_url('dist/img/bkk.png'), ENT_QUOTES, 'UTF-8') : 'dist/img/bkk.png'; ?>">
 
   <link rel="stylesheet" href="plugins/fontawesome-free/css/all.min.css">
   <link rel="stylesheet" href="dist/css/adminlte.min.css">
@@ -77,39 +71,66 @@ if ($hak_akses == 'kepala') {
   <link rel="stylesheet" href="plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="plugins/select2/css/select2.min.css">
   <link rel="stylesheet" href="plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+  <link rel="stylesheet" href="dist/css/simpeg-modern.css">
 
   <style>
-    /* 1. Glassmorphism Navbar */
+    /* 1. Navbar modern */
     .main-header {
-        background: rgba(255, 255, 255, 0.85) !important;
-        backdrop-filter: blur(15px); /* Efek Blur di belakang navbar */
+        background: rgba(255, 255, 255, 0.9) !important;
+        backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(15px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03); /* Shadow super halus */
-        height: 65px;
+        border-bottom: 1px solid rgba(223, 230, 215, 0.92) !important;
+        box-shadow: 0 12px 28px rgba(22, 38, 35, 0.06);
+        min-height: 70px;
+        padding: 0 0.65rem;
     }
-
+    .main-header.navbar {
+        display: flex;
+        align-items: center;
+    }
+    .main-header .navbar-nav {
+        align-items: center;
+    }
+    .main-header .navbar-nav.ms-auto {
+        gap: 0.7rem !important;
+        padding-right: 0.35rem;
+    }
+    .navbar-glass-chip {
+        background: rgba(247, 250, 249, 0.96);
+        border: 1px solid rgba(214, 228, 224, 0.98);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    }
     /* 2. Toggle Sidebar Button */
     .nav-link.ripple {
-        border-radius: 50%;
-        width: 40px; height: 40px;
+        border-radius: 14px;
+        width: 42px; height: 42px;
         display: flex; align-items: center; justify-content: center;
         transition: all 0.3s ease;
-        color: #64748b;
+        color: #4f6a67;
+        background: rgba(247, 250, 249, 0.96);
+        border: 1px solid rgba(214, 228, 224, 0.98);
     }
     .nav-link.ripple:hover {
-        background-color: #f1f5f9;
-        color: #0d6efd;
-        transform: rotate(90deg); /* Animasi putar dikit */
+        background-color: #ffffff;
+        color: #0f766e;
+        transform: translateY(-1px);
     }
 
     /* 3. Notifikasi Pulse */
     .notif-btn {
         position: relative;
-        color: #64748b !important;
+        color: #4f6a67 !important;
         transition: 0.3s;
+        border-radius: 14px;
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(247, 250, 249, 0.96);
+        border: 1px solid rgba(214, 228, 224, 0.98);
     }
-    .notif-btn:hover { color: #0d6efd !important; transform: translateY(-2px); }
+    .notif-btn:hover { color: #0f766e !important; transform: translateY(-1px); background: #fff; }
     
     .pulse-badge {
         animation: pulse-red 2s infinite;
@@ -123,21 +144,21 @@ if ($hak_akses == 'kepala') {
 
     /* 4. Profile Pill (Modern Shape) */
     .profile-pill {
-        background: transparent;
-        border: 1px solid transparent;
-        padding: 4px 15px 4px 4px !important;
-        border-radius: 50px !important;
+        background: rgba(247, 250, 249, 0.96);
+        border: 1px solid rgba(214, 228, 224, 0.98);
+        padding: 5px 14px 5px 5px !important;
+        border-radius: 16px !important;
         transition: all 0.3s ease;
     }
     .profile-pill:hover, .profile-pill[aria-expanded="true"] {
         background: #fff;
-        border-color: #e2e8f0;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border-color: #d6e4e0;
+        box-shadow: 0 8px 20px rgba(18, 34, 30, 0.08);
     }
     .profile-img {
         width: 38px; height: 38px; object-fit: cover;
         border: 2px solid #fff;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
     }
 
     /* 5. Dropdown Menu Animasi */
@@ -168,21 +189,45 @@ if ($hak_akses == 'kepala') {
 
     /* 6. Date Widget */
     .date-widget {
-        font-size: 0.85rem; font-weight: 600; color: #64748b;
-        background: #f8fafc; padding: 6px 15px; border-radius: 20px;
-        border: 1px solid #e2e8f0;
+        font-size: 0.84rem; font-weight: 700; color: #607270;
+        background: rgba(247, 250, 249, 0.96); padding: 8px 16px; border-radius: 999px;
+        border: 1px solid rgba(214, 228, 224, 0.98);
+    }
+    @media (max-width: 767.98px) {
+        .main-header {
+            min-height: 64px;
+            padding: 0 0.35rem;
+        }
+        .main-header .navbar-nav.ms-auto {
+            gap: 0.35rem !important;
+            padding-right: 0;
+        }
+        .profile-pill {
+            padding-right: 8px !important;
+        }
+        .notif-btn,
+        .nav-link.ripple {
+            width: 40px;
+            height: 40px;
+        }
     }
   </style>
 </head>
 
-<body class="hold-transition sidebar-mini layout-fixed text-sm">
+<body class="hold-transition layout-fixed text-sm simpeg-sidebar-static">
 <div class="wrapper">
+<div id="simpegGlobalLoader" class="simpeg-loading-overlay" aria-hidden="true">
+  <div class="simpeg-loading-card">
+    <div class="simpeg-loading-spinner"></div>
+    <p>Memuat halaman...</p>
+  </div>
+</div>
 
 <nav class="main-header navbar navbar-expand navbar-white navbar-light">
   
   <ul class="navbar-nav align-items-center">
     <li class="nav-item">
-      <a class="nav-link ripple" data-widget="pushmenu" href="#" role="button">
+      <a class="nav-link ripple" data-simpeg-sidebar-toggle href="#" role="button" aria-label="Toggle sidebar">
         <i class="fas fa-bars"></i>
       </a>
     </li>
@@ -219,7 +264,9 @@ if ($hak_akses == 'kepala') {
              </div>
           <?php else: ?>
               <?php while ($notif = mysqli_fetch_assoc($qNotif)): ?>
-                <a href="<?= $hak_akses == 'kepala' ? 'home-admin.php?page=otorisasi-detail&id_pending=' . $notif['id_edit'] : $notif['link_aksi'] ?>" 
+                <a href="<?= $hak_akses == 'kepala'
+                    ? (function_exists('page_url') ? page_url('otorisasi-detail', array('id_edit' => $notif['id_edit'])) : 'home-admin.php?page=otorisasi-detail&id_edit=' . $notif['id_edit'])
+                    : $notif['link_aksi'] ?>" 
                    class="dropdown-item border-bottom">
                   <div class="d-flex justify-content-between mb-1">
                     <small class="text-primary fw-bold">Update</small>
@@ -259,7 +306,7 @@ if ($hak_akses == 'kepala') {
             <small class="text-muted">NIP. <?php echo isset($_SESSION['id_pegawai']) ? $_SESSION['id_pegawai'] : '-'; ?></small>
         </div>
 
-        <a href="home-admin.php?page=profil-pegawai" class="dropdown-item">
+        <a href="<?php echo function_exists('page_url') ? page_url('profil-pegawai') : 'home-admin.php?page=profil-pegawai'; ?>" class="dropdown-item">
             <i class="far fa-user-circle me-2 text-primary width-20"></i> Profil Saya
         </a>
         <a href="#" class="dropdown-item">

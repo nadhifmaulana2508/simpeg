@@ -18,53 +18,268 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
 <link rel="stylesheet" href="plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
 
 <style>
-    .card-modern { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: #fff; margin-bottom: 25px; }
-    .card-header-modern { padding: 20px 30px; background: #fff; border-bottom: 1px solid #f1f5f9; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
-    
-    .btn-action-rounded { border-radius: 50px; padding: 8px 20px; font-weight: 600; font-size: 0.85rem; }
-    table.dataTable thead th { background-color: #fff; color: #64748b; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid #f1f5f9 !important; padding: 15px 20px; }
-    table.dataTable tbody td { padding: 15px 20px; vertical-align: middle; border-bottom: 1px solid #f8fafc; color: #334155; font-size: 0.9rem; }
-    
-    /* Badge Custom buat Role */
-    .badge-role { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+    .user-page {
+        padding-top: 0.75rem;
+        padding-bottom: 1rem;
+    }
+    .user-card {
+        border: 1px solid rgba(217, 229, 220, 0.95) !important;
+        border-radius: 14px !important;
+        background: rgba(255,255,255,0.94) !important;
+        box-shadow: 0 12px 30px rgba(15, 35, 26, 0.06) !important;
+        overflow: hidden;
+    }
+    .user-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid rgba(217, 229, 220, 0.95);
+        background: linear-gradient(180deg, rgba(246,250,247,0.95), rgba(255,255,255,0.95));
+    }
+    .user-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+    }
+    .user-title-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #dff5f2;
+        color: #0f766e;
+        flex: 0 0 auto;
+    }
+    .user-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #1e2b24;
+        line-height: 1.2;
+    }
+    .user-subtitle {
+        margin: 0.08rem 0 0;
+        color: #5d6d64;
+        font-size: 0.8rem;
+    }
+    .btn-user-primary {
+        border: 0 !important;
+        border-radius: 12px !important;
+        padding: 0.55rem 0.85rem !important;
+        background: #0f766e !important;
+        color: #fff !important;
+        font-weight: 800;
+        box-shadow: 0 8px 18px rgba(15, 118, 110, 0.14);
+    }
+    .btn-user-primary:hover {
+        background: #0b5c56 !important;
+        color: #fff !important;
+        transform: translateY(-1px);
+    }
+    .user-filter-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid rgba(217, 229, 220, 0.88);
+        background: rgba(246,250,247,0.72);
+    }
+    .user-filter-group {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+    }
+    .user-filter-label {
+        display: block;
+        margin-bottom: 0;
+        color: #5d6d64;
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .user-filter-control,
+    .user-page .dataTables_length select,
+    .user-page .dataTables_filter input,
+    .user-delete-modal textarea {
+        min-height: 38px;
+        border-radius: 12px !important;
+        border: 1px solid #d9e5dc !important;
+        background: #fff !important;
+        color: #1e2b24 !important;
+        box-shadow: none !important;
+    }
+    .user-page .dataTables-toolbar,
+    .user-page .dataTables-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.65rem 1rem;
+        flex-wrap: wrap;
+    }
+    .user-page .dataTables_filter label,
+    .user-page .dataTables_length label {
+        margin-bottom: 0;
+        color: #5d6d64;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+    .user-page .dataTables_filter input {
+        width: min(300px, 72vw) !important;
+        margin-left: 0.6rem;
+        padding: 0.45rem 0.8rem;
+    }
+    .user-page .dataTables_length select {
+        width: 76px;
+        margin: 0 0.45rem;
+        padding: 0.3rem 0.6rem;
+    }
+    .user-table {
+        margin: 0 !important;
+    }
+    .user-table.dataTable thead th {
+        background: #fbfdfb;
+        color: #5d6d64;
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        border-top: 0 !important;
+        border-bottom: 1px solid #d9e5dc !important;
+        padding: 0.65rem 0.85rem;
+        vertical-align: middle;
+    }
+    .user-table.dataTable tbody td {
+        padding: 0.68rem 0.85rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(217, 229, 220, 0.72);
+        color: #1e2b24;
+        font-size: 0.9rem;
+    }
+    .user-table tbody tr:hover {
+        background: rgba(223,245,242,0.28);
+    }
+    .badge-role,
+    .user-status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 26px;
+        padding: 0.28rem 0.62rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        border: 1px solid transparent;
+    }
+    .badge-role-admin { background: #dff5f2; color: #0f766e; border-color: rgba(15,118,110,0.14); }
+    .badge-role-kepala { background: #eaf2ff; color: #2563a8; border-color: rgba(63,131,213,0.16); }
+    .badge-role-superadmin { background: #fee2e2; color: #b91c1c; border-color: rgba(201,95,90,0.16); }
+    .badge-role-user { background: #eef5f0; color: #5d6d64; border-color: #d9e5dc; }
+    .user-action-group {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+    .user-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #d9e5dc !important;
+        background: #fff !important;
+        box-shadow: none !important;
+    }
+    .user-action-edit { color: #9a6a13 !important; }
+    .user-action-delete { color: #c95f5a !important; }
+    .user-delete-modal .modal-content {
+        border: 1px solid #d9e5dc !important;
+        border-radius: 18px !important;
+        overflow: hidden;
+    }
+    .user-delete-modal .modal-header {
+        background: #c95f5a !important;
+        border-bottom: 0;
+    }
+    .user-delete-modal .modal-footer {
+        background: #f6faf7 !important;
+        border-top: 1px solid #d9e5dc;
+    }
+    @media (max-width: 767.98px) {
+        .user-card-header,
+        .user-filter-bar,
+        .user-page .dataTables-toolbar,
+        .user-page .dataTables-footer {
+            align-items: stretch;
+            flex-direction: column;
+        }
+        .user-filter-group,
+        .btn-user-primary,
+        .user-page .dataTables_filter input {
+            width: 100% !important;
+        }
+        .user-filter-group {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .user-card-header {
+            padding: 0.8rem;
+        }
+        .user-page .dataTables_filter label {
+            width: 100%;
+        }
+        .user-page .dataTables_filter input {
+            margin-left: 0;
+            margin-top: 0.35rem;
+        }
+    }
 </style>
 
-<section class="content pt-4 px-3">
-    <div class="card card-modern">
-        
-        <div class="card-header-modern">
-            <div>
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-users-cog text-primary fa-lg mr-2"></i>
-                    <h5 class="mb-0 font-weight-bold text-dark">Manajemen User</h5>
+<section class="content simpeg-page user-page">
+    <div class="card user-card">
+        <div class="user-card-header">
+            <div class="user-title-wrap">
+                <span class="user-title-icon"><i class="fas fa-users-cog"></i></span>
+                <div>
+                    <h5 class="user-title">Manajemen User</h5>
+                    <p class="user-subtitle">Kelola akun, role akses, dan status user.</p>
                 </div>
-                <small class="text-muted ml-1">Kelola akun akses sistem pegawai.</small>
             </div>
-            
-            <div>
-                <a href="home-admin.php?page=form-master-data-user&mode=create" class="btn btn-primary btn-action-rounded shadow-sm">
-                    <i class="fas fa-plus mr-1"></i> Tambah User
-                </a>
+            <a href="home-admin.php?page=form-master-data-user&mode=create" class="btn btn-user-primary">
+                <i class="fas fa-plus mr-1"></i> Tambah User
+            </a>
+        </div>
+
+        <div class="user-filter-bar">
+            <div class="user-filter-group">
+                <label class="user-filter-label" for="filter_role">Role Akses</label>
+                <select id="filter_role" class="form-control user-filter-control">
+                    <option value="">Semua Role</option>
+                    <option value="superadmin">Super Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="kepala">Kepala / Kabid</option>
+                    <option value="user">User</option>
+                </select>
             </div>
         </div>
 
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <select id="filter_role" class="form-control">
-                        <option value="">- Semua Role -</option>
-                        <option value="admin">Admin</option>
-                        <option value="kepala">Supervisor</option> <option value="user">User</option>
-                    </select>
-                </div>
-            </div>
-
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table w-100" id="tabelUserAjax">
+                <table class="table user-table w-100" id="tabelUserAjax">
                     <thead>
                         <tr>
                             <th width="5%" class="text-center">No</th>
-                            <th width="25%">User Info</th>
+                            <th width="25%">User</th>
                             <th>Jabatan</th>
                             <th class="text-center">Role</th>
                             <th class="text-center">Status</th>
@@ -78,7 +293,7 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
     </div>
 </section>
 
-<div class="modal fade" id="modalHapus" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade user-delete-modal" id="modalHapus" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content border-0 shadow-lg rounded-lg">
             <div class="modal-header bg-danger text-white">
@@ -97,8 +312,8 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
                 <input type="hidden" id="deleteId">
             </div>
             <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-link text-secondary font-weight-bold btn-close-modal">Batal</button>
-                <button type="button" class="btn btn-danger font-weight-bold shadow-sm px-4" id="btnConfirmDelete">Ya, Hapus</button>
+                <button type="button" class="btn btn-light font-weight-bold btn-close-modal">Batal</button>
+                <button type="button" class="btn btn-danger font-weight-bold px-4" id="btnConfirmDelete">Ya, Hapus</button>
             </div>
         </div>
     </div>
@@ -117,6 +332,7 @@ $(document).ready(function() {
         "serverSide": true,
         "ordering": false,
         "autoWidth": false,
+        "searchDelay": 650,
         "ajax": {
             "url": "pages/user/ajax-data-user.php",
             "type": "GET",
@@ -133,13 +349,15 @@ $(document).ready(function() {
                 "data": "role", 
                 "className": "text-center",
                 "render": function(data, type, row) {
-                    // Jika data dari database 'kepala', tampilkan 'Supervisor'
+                    data = (data || 'user').toString().toLowerCase();
                     if (data === 'kepala') {
-                        return '<span class="badge badge-success badge-role">Supervisor</span>';
+                        return '<span class="badge-role badge-role-kepala">Kepala / Kabid</span>';
                     } else if (data === 'admin') {
-                        return '<span class="badge badge-primary badge-role">Admin</span>';
+                        return '<span class="badge-role badge-role-admin">Admin</span>';
+                    } else if (data === 'superadmin') {
+                        return '<span class="badge-role badge-role-superadmin">Super Admin</span>';
                     } else {
-                        return '<span class="badge badge-secondary badge-role">User</span>';
+                        return '<span class="badge-role badge-role-user">User</span>';
                     }
                 }
             },
@@ -153,7 +371,20 @@ $(document).ready(function() {
             "processing": "<div class='spinner-border text-primary spinner-border-sm'></div> Memuat...",
             "paginate": { "next": '<i class="fas fa-chevron-right"></i>', "previous": '<i class="fas fa-chevron-left"></i>' }
         },
-        "dom": '<"d-flex justify-content-between align-items-center p-3"lf>rt<"d-flex justify-content-between align-items-center p-3"ip>'
+        "dom": '<"dataTables-toolbar"lf>rt<"dataTables-footer"ip>'
+    });
+
+    var searchTimer = null;
+    var $searchInput = $('#tabelUserAjax_filter input');
+    $searchInput.off('.DT');
+    $searchInput.on('input', function() {
+        var keyword = this.value;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function() {
+            if (table.search() !== keyword) {
+                table.search(keyword).draw();
+            }
+        }, 650);
     });
 
     $('#filter_role').change(function(){ table.ajax.reload(); });

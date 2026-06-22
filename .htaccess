@@ -1,26 +1,28 @@
 RewriteEngine On
-RewriteBase /
 
-# 1. Hilangkan ekstensi .php di URL
+# Langsung buka login saat akses root aplikasi.
+RewriteRule ^$ index.php [L]
+
+# API internal.
+RewriteRule ^api/?$ api/index.php [QSA,L]
+RewriteRule ^api/index\.php$ api/index.php [QSA,L]
+RewriteRule ^api/(.*)$ api/index.php?path=$1 [QSA,L]
+
+# Biarkan file dan folder asli tetap bisa diakses.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Routing aplikasi yang lebih bersih tanpa /app.
+RewriteRule ^dashboard/?$ home-admin.php [QSA,L]
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ home-admin.php?page=$1 [QSA,L]
+
+# Kompatibilitas URL lama tanpa .php.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([a-zA-Z0-9_-]+)$ $1.php [L]
 
-# 2. Alias khusus (penyamaran halaman penting)
-RewriteRule ^dashboard$ home-admin.php [L]
-RewriteRule ^pegawai$ master-data-pegawai.php [L]
-RewriteRule ^jabatan$ master-data-jabatan.php [L]
-RewriteRule ^unit$ master-data-unit.php [L]
-RewriteRule ^monitoring$ grafik-progres.php [L]
-RewriteRule ^tindak-lanjut$ tindak-lanjut.php [L]
-RewriteRule ^temuan$ daftar-temuan.php [L]
-RewriteRule ^notifikasi$ notifikasi-deadline.php [L]
-RewriteRule ^laporan$ laporan-rekap.php [L]
-RewriteRule ^pengaturan$ kelola-user.php [L]
-RewriteRule ^login$ pages/login/index.php [L]
-
-# 3. Default fallback (404 custom atau redirect ke home)
-# Jika tidak ditemukan, arahkan ke halaman 404 khusus
+# Fallback 404.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^.*$ 404.php [L]

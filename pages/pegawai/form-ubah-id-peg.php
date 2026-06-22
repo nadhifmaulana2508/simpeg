@@ -8,6 +8,21 @@
 if (session_id() == '') session_start();
 include "dist/koneksi.php";
 
+if (!function_exists('fuip_page_url')) {
+    function fuip_page_url($page, $params = array()) {
+        if (function_exists('page_url')) {
+            return page_url($page, $params);
+        }
+
+        $url = 'home-admin.php?page=' . urlencode($page);
+        if (!empty($params)) {
+            $url .= '&' . http_build_query($params);
+        }
+
+        return $url;
+    }
+}
+
 // 1. SECURITY: Cek Login
 if (empty($_SESSION['id_user'])) {
     die("<div class='alert alert-danger'>Akses Ditolak. Silakan login terlebih dahulu.</div>");
@@ -21,42 +36,89 @@ $qPegawai = mysqli_query($conn, $sqlPegawai);
 ?>
 
 <style>
+    .mutasi-page {
+        padding-top: 18px;
+        padding-bottom: 32px;
+    }
+    .mutasi-shell {
+        background: linear-gradient(180deg, #f4fbfa 0%, #ffffff 100%);
+        border-radius: 22px;
+        padding: 22px;
+    }
+    .mutasi-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .mutasi-title {
+        margin: 0;
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #173534;
+    }
+    .mutasi-subtitle {
+        color: #607270;
+        margin-top: 6px;
+    }
     .card-ref {
-        border: 1px solid #e3e6f0; border-radius: 8px;
-        box-shadow: 0 0 15px rgba(0,0,0,0.05); overflow: hidden; background: #fff;
+        border: 1px solid #e1efed; border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(15,118,110,0.08); overflow: hidden; background: #fff;
     }
     .card-ref-header {
-        background-color: #007bff; color: #fff; padding: 15px 20px;
-        border-bottom: 1px solid #0069d9;
+        background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); color: #fff; padding: 18px 22px;
+        border-bottom: 1px solid rgba(255,255,255,0.18);
     }
     .card-ref-header h5 { font-weight: 700; font-size: 1.1rem; margin: 0; }
     .card-ref-header small { color: rgba(255,255,255,0.8); font-size: 0.85rem; }
-    .form-label-ref { font-weight: 700; font-size: 0.85rem; color: #212529; margin-bottom: 6px; }
+    .form-label-ref { font-weight: 700; font-size: 0.85rem; color: #243c3a; margin-bottom: 6px; }
     .form-control-ref {
-        border-radius: 6px; border: 1px solid #ced4da; height: 42px;
+        border-radius: 12px; border: 1px solid #cfdedb; height: 46px;
         font-size: 0.95rem; padding: 8px 12px;
     }
-    .form-control-ref:focus { border-color: #80bdff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+    .form-control-ref:focus { border-color: #14b8a6; box-shadow: 0 0 0 0.2rem rgba(20,184,166,.16); }
     .card-ref-footer {
         padding: 20px; background-color: #fff; border-top: 1px solid #f1f1f1;
         display: flex; justify-content: space-between; align-items: center;
     }
-    .btn-ref-back { background: #fff; border: 1px solid #ced4da; color: #5a5c69; font-weight: 600; padding: 8px 20px; border-radius: 6px; }
-    .btn-ref-save { background: #007bff; border: none; color: #fff; font-weight: 600; padding: 8px 30px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,123,255,0.3); }
-    .btn-ref-save:hover { background: #0069d9; color:#fff; }
-    .btn-ref-back:hover { background: #f8f9fa; color:#333; }
-    
-    /* Override Select2 agar sesuai tema Bootstrap 4 */
-    .select2-container .select2-selection--single { height: 42px !important; border: 1px solid #ced4da !important; border-radius: 6px !important; }
-    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 40px; padding-left: 12px; }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px; }
+    .btn-ref-back { background: #fff; border: 1px solid #cedbd9; color: #4a5c5b; font-weight: 700; padding: 10px 20px; border-radius: 12px; }
+    .btn-ref-save { background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); border: none; color: #fff; font-weight: 700; padding: 10px 30px; border-radius: 12px; box-shadow: 0 10px 24px rgba(15,118,110,0.22); }
+    .btn-ref-save:hover { color:#fff; }
+    .btn-ref-back:hover { background: #f8fbfb; color:#173534; }
+    .form-note {
+        border: 1px solid #d8ece8;
+        background: #f4fbfa;
+        color: #476361;
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 18px;
+    }
+    .select2-container .select2-selection--single { height: 46px !important; border: 1px solid #cfdedb !important; border-radius: 12px !important; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 44px; padding-left: 12px; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 44px; }
+    @media(max-width: 768px) {
+        .mutasi-header { flex-direction: column; }
+        .card-ref-footer { flex-direction: column-reverse; gap: 12px; }
+        .card-ref-footer .btn { width: 100%; }
+    }
 </style>
 
 <link rel="stylesheet" href="plugins/select2/css/select2.min.css">
 <link rel="stylesheet" href="plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
 
-<section class="content pt-3">
+<section class="content mutasi-page">
     <div class="container-fluid">
+        <div class="mutasi-shell">
+        <div class="mutasi-header">
+            <div>
+                <h1 class="mutasi-title">Pengangkatan Pegawai</h1>
+                <p class="mutasi-subtitle">Samakan alur perubahan ID pegawai, SK, dan dokumen pendukung dalam satu form yang lebih rapi.</p>
+            </div>
+            <a href="<?= fuip_page_url('form-view-data-pegawai'); ?>" class="btn btn-outline-secondary">
+                <i class="fa fa-arrow-left mr-1"></i> Kembali
+            </a>
+        </div>
         <div class="row justify-content-center">
             <div class="col-md-10">
                 
@@ -69,6 +131,9 @@ $qPegawai = mysqli_query($conn, $sqlPegawai);
                         </div>
 
                         <div class="card-body p-4">
+                            <div class="form-note">
+                                Gunakan form ini untuk pengangkatan calon pegawai atau perubahan NIP. Tampilan dan alur sengaja disamakan dengan form pegawai lainnya.
+                            </div>
                             
                             <div class="form-group mb-4">
                                 <label class="form-label-ref">Pilih Pegawai (ID Lama)</label>
@@ -123,7 +188,7 @@ $qPegawai = mysqli_query($conn, $sqlPegawai);
                         </div>
 
                         <div class="card-ref-footer">
-                            <a href="home-admin.php?page=form-view-data-pegawai" class="btn btn-ref-back">
+                            <a href="<?= fuip_page_url('form-view-data-pegawai'); ?>" class="btn btn-ref-back">
                                 <i class="fa fa-arrow-left mr-1"></i> Kembali
                             </a>
                             <button type="submit" name="simpan" class="btn btn-ref-save">
@@ -135,6 +200,7 @@ $qPegawai = mysqli_query($conn, $sqlPegawai);
                 </form>
 
             </div>
+        </div>
         </div>
     </div>
 </section>

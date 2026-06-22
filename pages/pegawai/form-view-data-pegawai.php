@@ -13,9 +13,9 @@ $kode_kantor_session = isset($_SESSION['kode_kantor']) ? $_SESSION['kode_kantor'
 
 // Link Kembali
 if ($hak_akses_user === 'kepala') {
-    $link_back = "home-admin.php?page=dashboard-cabang";
+    $link_back = function_exists('page_url') ? page_url('dashboard-cabang') : "home-admin.php?page=dashboard-cabang";
 } else {
-    $link_back = "home-admin.php";
+    $link_back = function_exists('page_url') ? page_url('dashboard') : "home-admin.php";
 }
 ?>
 
@@ -24,115 +24,121 @@ if ($hak_akses_user === 'kepala') {
 <link rel="stylesheet" href="plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
 
 <style>
-    /* --- CSS UTAMA --- */
     .content-header { display: none !important; }
-    .content-wrapper { background-color: #f8f9fa; font-family: sans-serif; }
-    
-    .card-modern {
-        border: none; border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-        background: #fff; margin-bottom: 25px;
+    .pegawai-page .avatar-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid rgba(255,255,255,0.9);
+        box-shadow: 0 8px 18px rgba(15, 35, 26, 0.12);
+        background: #eef4ef;
     }
-    .card-header-modern {
-        padding: 20px 30px; background: #fff; border-bottom: 1px solid #f1f5f9;
-        border-radius: 16px 16px 0 0;
-        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+    .pegawai-page .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+    .pegawai-page .text-pegawai-name { font-weight: 800; color: #1e2b24; font-size: 0.95rem; display: block; }
+    .pegawai-page .text-pegawai-id {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-family: monospace;
+        color: #537063;
+        font-size: 0.82rem;
+        background: #eef5f0;
+        padding: 3px 8px;
+        border-radius: 999px;
     }
-
-    /* TABS STYLE */
-    .nav-pills-modern { background: #f1f5f9; padding: 4px; border-radius: 50px; display: inline-flex; }
-    .nav-pills-modern .nav-link {
-        border-radius: 50px; padding: 8px 24px; font-weight: 600; color: #64748b; font-size: 0.9rem; transition: all 0.2s;
+    .pegawai-page .text-jabatan { font-weight: 800; color: #1e2b24; font-size: 0.92rem; display: block; margin-bottom: 0.15rem; }
+    .pegawai-page .text-kantor { color: #0f766e; font-weight: 700; font-size: 0.8rem; display: block; }
+    .pegawai-page .text-divisi { color: #70837a; font-size: 0.8rem; display: block; }
+    .pegawai-page .dt-controls-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        gap: 0.75rem;
+        flex-wrap: wrap;
     }
-    .nav-pills-modern .nav-link:hover { color: #0f172a; }
-    .nav-pills-modern .nav-link.active { background-color: #fff; color: #0ea5e9; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-
-    /* SELECT2 CUSTOM */
-    .select2-container .select2-selection--single {
-        height: 45px !important; border-radius: 10px !important;
-        border: 1px solid #e2e8f0 !important; padding: 8px 10px !important;
-        background-color: #fff !important; display: flex; align-items: center;
+    .pegawai-page .btn-action-blue,
+    .pegawai-page .btn-action-orange {
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        min-height: 36px;
+        border-radius: 12px !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 !important;
     }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 45px !important; right: 10px !important; }
-    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: normal !important; color: #334155 !important; padding-left: 5px; }
-    
-    .filter-label { font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; display: block; }
-
-    /* TABLE STYLE */
-    table.dataTable { border-collapse: separate; border-spacing: 0; width: 100% !important; margin-top: 0 !important; }
-    table.dataTable thead th {
-        background-color: #fff; color: #64748b; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
-        border-bottom: 2px solid #f1f5f9 !important; padding: 15px 20px;
+    .pegawai-page .btn-action-blue {
+        background: linear-gradient(135deg, #5e97e1, #3f83d5);
+        color: #fff;
     }
-    table.dataTable tbody td { padding: 15px 20px; vertical-align: middle; border-bottom: 1px solid #f8fafc; color: #334155; font-size: 0.95rem; }
-    table.dataTable tbody tr:hover { background-color: #fcfdfe; }
-
-    /* AVATAR & TEXT HELPERS */
-    .avatar-wrapper { width: 45px; height: 45px; border-radius: 50%; overflow: hidden; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eee;}
-    .avatar-img { width: 100%; height: 100%; object-fit: cover; }
-    
-    .text-pegawai-name { font-weight: 700; color: #1e293b; font-size: 0.95rem; display: block; }
-    .text-pegawai-id { font-family: monospace; color: #64748b; font-size: 0.85rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
-    
-    .text-jabatan { font-weight: 700; color: #0f172a; font-size: 0.9rem; display: block; margin-bottom: 2px; }
-    .text-kantor { color: #0ea5e9; font-weight: 600; font-size: 0.8rem; display: block; }
-    .text-divisi { color: #94a3b8; font-size: 0.8rem; display: block; }
-
-    /* DATATABLE CONTROLS */
-    .dt-controls-wrapper { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; gap: 10px; }
-    .dataTables_filter input { border-radius: 50px !important; border: 1px solid #e2e8f0; padding: 8px 20px !important; outline: none; }
-    .dataTables_length select { border-radius: 50px !important; border: 1px solid #e2e8f0; padding: 5px 15px; outline: none; }
-
+    .pegawai-page .btn-action-orange {
+        background: linear-gradient(135deg, #f7ca6e, #f3b847);
+        color: #2f2514;
+    }
+    .pegawai-page .card-header {
+        gap: 1rem;
+    }
+    .pegawai-page .card-header .simpeg-toolbar {
+        margin-left: auto;
+        justify-content: flex-end;
+    }
     @media (max-width: 768px) {
-        .card-header-modern { flex-direction: column; align-items: flex-start; }
-        .dt-controls-wrapper { flex-direction: column; align-items: stretch; }
-        .dataTables_filter { text-align: left !important; }
-        .dataTables_filter input { width: 100% !important; margin-left: 0 !important; }
+        .pegawai-page .dt-controls-wrapper { align-items: stretch; }
+        .pegawai-page .dataTables_filter { width: 100%; }
+        .pegawai-page .dataTables_filter input { width: 100% !important; margin-left: 0 !important; }
+        .pegawai-page .card-header .simpeg-toolbar {
+            margin-left: 0;
+            width: 100%;
+            justify-content: flex-start;
+        }
     }
 </style>
 
-<section class="content" style="padding-top: 30px; padding-bottom: 50px;">
+<section class="content simpeg-page pegawai-page">
   <div class="container-fluid">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="simpeg-page-header">
         <div>
-            <h3 style="font-weight: 800; color: #1e293b; margin-bottom: 4px; font-size: 1.7rem;">Data Pegawai</h3>
-            <p class="text-muted mb-0" style="font-size: 0.9rem;">Kelola data pegawai, jabatan, dan status kepegawaian.</p>
+            <h3 class="simpeg-page-title">Data Pegawai</h3>
+            <p class="simpeg-page-subtitle">Kelola data pegawai, jabatan, status aktif, dan histori purna dengan tampilan yang lebih konsisten.</p>
         </div>
-        <a href="<?= $link_back; ?>" class="btn btn-white border shadow-sm rounded-pill px-4 py-2 bg-white font-weight-bold text-secondary">
+        <a href="<?= $link_back; ?>" class="btn btn-light border shadow-sm">
             <i class="fa fa-arrow-left mr-2"></i> Kembali
         </a>
     </div>
 
-    <div class="card card-modern">
+    <div class="card simpeg-table-card">
       
-      <div class="card-header-modern">
-          <ul class="nav nav-pills nav-pills-modern" id="pegawaiTab" role="tablist">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <ul class="nav nav-pills simpeg-tabset" id="pegawaiTab" role="tablist">
               <li class="nav-item">
-                  <a class="nav-link active" id="aktif-tab" data-toggle="pill" href="#aktif" role="tab">
+                  <a class="nav-link active" id="aktif-tab" data-bs-toggle="pill" href="#aktif" role="tab">
                       <i class="fa fa-users mr-1"></i> Aktif
                   </a>
               </li>
 
               <?php if ($hak_akses_user === 'admin'): ?>
               <li class="nav-item">
-                  <a class="nav-link" id="nonjob-tab" data-toggle="pill" href="#nonjob" role="tab">
+                  <a class="nav-link" id="nonjob-tab" data-bs-toggle="pill" href="#nonjob" role="tab">
                       <i class="fa fa-user-tag mr-1"></i> Belum Ada Jabatan
                   </a>
               </li>
               <?php endif; ?>
 
               <li class="nav-item">
-                  <a class="nav-link" id="purna-tab" data-toggle="pill" href="#purna" role="tab">
+                  <a class="nav-link" id="purna-tab" data-bs-toggle="pill" href="#purna" role="tab">
                       <i class="fa fa-history mr-1"></i> Purna
                   </a>
               </li>
           </ul>
 
           <?php if ($hak_akses_user === 'admin'): ?>
-          <div class="d-flex gap-2">
-              <a href="home-admin.php?page=form-master-data-pegawai" class="btn btn-primary rounded-pill shadow-sm px-4 font-weight-bold" style="background:#0ea5e9; border:none;"><i class="fa fa-plus mr-2"></i> Tambah</a>
-              <a href="home-admin.php?page=form-upload-data-pegawai" class="btn btn-outline-success rounded-pill px-4 font-weight-bold" style="border:1px solid #22c55e; color:#22c55e;"><i class="fa fa-file-excel mr-2"></i> Import</a>
+          <div class="simpeg-toolbar">
+              <a href="home-admin.php?page=form-master-data-pegawai" class="btn btn-primary shadow-sm"><i class="fa fa-plus mr-2"></i> Tambah</a>
+              <a href="home-admin.php?page=form-upload-data-pegawai" class="btn btn-light border"><i class="fa fa-file-excel mr-2 text-success"></i> Import Excel</a>
           </div>
           <?php endif; ?>
       </div>
@@ -142,11 +148,11 @@ if ($hak_akses_user === 'kepala') {
 
           <div class="tab-pane fade show active" id="aktif" role="tabpanel">
             
-            <div class="p-4 border-bottom" style="background: #fff;">
+            <div class="simpeg-filter-panel">
                  <div class="row g-3">
                     
                     <div class="col-md-4 col-12 mb-3 mb-md-0">
-                        <label class="filter-label"><i class="fa fa-building mr-1"></i> Kantor / Area</label>
+                        <label class="simpeg-filter-label"><i class="fa fa-building mr-1"></i> Kantor / Area</label>
                         <select id="filter_kantor" class="form-control select2">
                             <?php
                                 if ($hak_akses_user === 'admin') {
@@ -169,14 +175,14 @@ if ($hak_akses_user === 'kepala') {
                     </div>
 
                     <div class="col-md-4 col-12 mb-3 mb-md-0">
-                        <label class="filter-label"><i class="fa fa-sitemap mr-1"></i> Divisi / Unit Kerja</label>
+                        <label class="simpeg-filter-label"><i class="fa fa-sitemap mr-1"></i> Divisi / Unit Kerja</label>
                         <select id="filter_divisi" class="form-control select2" disabled>
                             <option value="">-- Pilih Kantor Dulu --</option>
                         </select>
                     </div>
 
                     <div class="col-md-4 col-12">
-                        <label class="filter-label"><i class="fa fa-id-badge mr-1"></i> Jabatan</label>
+                        <label class="simpeg-filter-label"><i class="fa fa-id-badge mr-1"></i> Jabatan</label>
                         <select id="filter_jabatan" class="form-control select2" disabled>
                             <option value="">-- Pilih Unit Dulu --</option>
                         </select>
@@ -204,7 +210,7 @@ if ($hak_akses_user === 'kepala') {
           <?php if ($hak_akses_user === 'admin'): ?>
           <div class="tab-pane fade" id="nonjob" role="tabpanel">
              <div class="p-4">
-                 <div class="alert alert-warning border-0 shadow-sm rounded-lg d-flex align-items-center mb-0" style="background-color: #fffbeb; color: #92400e;">
+                 <div class="alert alert-warning border-0 shadow-sm rounded-lg d-flex align-items-center mb-0">
                     <i class="fas fa-exclamation-triangle fa-2x mr-3"></i>
                     <div>
                         <h6 class="font-weight-bold mb-1">Data Pegawai Non-Jabatan</h6>
@@ -252,7 +258,6 @@ if ($hak_akses_user === 'kepala') {
 </section>
 
 <script src="plugins/jquery/jquery.min.js"></script>
-<script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="plugins/datatables/jquery.dataTables.min.js"></script>
 <script src="plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
 <script src="plugins/select2/js/select2.full.min.js"></script>
