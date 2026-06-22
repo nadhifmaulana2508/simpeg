@@ -9,16 +9,12 @@
 if (session_id()==='') session_start();
 
 /* ==== include koneksi + normalisasi variabel ==== */
-// Using absolute paths or a defined constant for ROOT_PATH is often more robust than relative paths
-$__paths = array(
-  __DIR__ . '/../../dist/koneksi.php',
-  __DIR__ . '/../../../dist/koneksi.php',
-  __DIR__ . '/../dist/koneksi.php',
-  __DIR__ . '/dist/koneksi.php'
-);
-foreach ($__paths as $__p) { if (is_file($__p)) { include_once $__p; } } // Removed @ for better error visibility
+$__root = dirname(dirname(__DIR__));
+if (!isset($conn)) {
+  include_once $__root . '/dist/koneksi.php';
+}
 if (!isset($koneksi)) { if (isset($conn)) { $koneksi = $conn; } }
-@include_once __DIR__ . '/../../dist/functions.php';
+include_once $__root . '/dist/functions.php';
 
 /* ===== Guard ===== */
 // Good practice: Explicit access control check

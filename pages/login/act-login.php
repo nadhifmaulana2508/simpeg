@@ -62,7 +62,7 @@ function simpeg_finish_login($conn, $row) {
             title: 'Login Berhasil',
             text: 'Selamat datang, " . htmlspecialchars($row['nama_user']) . "!',
             showConfirmButton: false,
-            timer: 2000
+            timer: 700
         }).then(() => {
             window.location.href = '$redirectPage';
         });
@@ -101,7 +101,7 @@ function simpeg_finish_sso_login($conn, $token, $whoami) {
             title: 'Login Berhasil',
             text: 'Selamat datang, " . htmlspecialchars($_SESSION['nama_user']) . "!',
             showConfirmButton: false,
-            timer: 1600
+            timer: 700
         }).then(() => {
             window.location.href = '$redirectPage';
         });

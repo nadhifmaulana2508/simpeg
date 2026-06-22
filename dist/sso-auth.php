@@ -8,6 +8,12 @@ if (!defined('SIMPEG_SSO_COOKIE')) {
 if (!defined('SIMPEG_SSO_LEGACY_COOKIE')) {
     define('SIMPEG_SSO_LEGACY_COOKIE', 'simpeg_sso_token');
 }
+if (!defined('SIMPEG_SSO_TIMEOUT')) {
+    define('SIMPEG_SSO_TIMEOUT', 6);
+}
+if (!defined('SIMPEG_SSO_CONNECT_TIMEOUT')) {
+    define('SIMPEG_SSO_CONNECT_TIMEOUT', 3);
+}
 
 function simpeg_sso_cookie_domain() {
     $host = isset($_SERVER['HTTP_HOST']) ? strtolower($_SERVER['HTTP_HOST']) : '';
@@ -114,7 +120,8 @@ function simpeg_sso_json_request($method, $path, $payload = null, $token = '') {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, SIMPEG_SSO_CONNECT_TIMEOUT);
+        curl_setopt($ch, CURLOPT_TIMEOUT, SIMPEG_SSO_TIMEOUT);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
@@ -133,7 +140,7 @@ function simpeg_sso_json_request($method, $path, $payload = null, $token = '') {
                 'method' => $method,
                 'header' => implode("\r\n", $headers),
                 'content' => $body !== null ? $body : '',
-                'timeout' => 20,
+                'timeout' => SIMPEG_SSO_TIMEOUT,
                 'ignore_errors' => true
             )
         ));
