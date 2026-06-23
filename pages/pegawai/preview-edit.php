@@ -122,7 +122,20 @@ $qRiwayat = mysqli_query($conn, $sqlRiwayat);
   .history-page-actions { display:flex; gap:.5rem; }
   .history-page-btn { border-radius:12px; border:1px solid #d9e5dc; background:#fff; color:#0f766e; font-weight:800; padding:.55rem .85rem; }
   .history-page-btn.disabled { color:#9aa8a1; pointer-events:none; background:#f5f8f6; }
-  @media(max-width:767.98px){ .history-profile,.history-body{grid-template-columns:1fr;} .history-item-head{flex-direction:column;} }
+  @media(max-width:767.98px){
+    .container-fluid.mt-4 { margin-top:.75rem!important; padding-left:.75rem; padding-right:.75rem; }
+    .history-card { border-radius:16px; }
+    .history-head,.history-profile,.history-list,.history-pager { padding:.85rem; }
+    .history-title { font-size:1.02rem; }
+    .history-subtitle,.history-page-info { font-size:.8rem; }
+    .history-profile,.history-body{grid-template-columns:1fr;}
+    .history-item { padding:.8rem; border-radius:14px; }
+    .history-item-head{flex-direction:column; gap:.45rem;}
+    .history-chip { display:flex; width:100%; border-radius:10px; line-height:1.35; }
+    .history-pager { align-items:stretch; flex-direction:column; }
+    .history-page-actions { display:grid; grid-template-columns:1fr 1fr; }
+    .history-page-btn { text-align:center; }
+  }
 </style>
 
 <div class="container-fluid mt-4">

@@ -41,6 +41,28 @@ if (mysqli_num_rows($tampilPeg) == 0) {
 }
 $peg = mysqli_fetch_array($tampilPeg);
 
+$jabatan_aktif_info = null;
+$qJabAktifInfo = mysqli_query($conn, "
+    SELECT
+        j.id_jab,
+        j.kode_jabatan,
+        j.unit_kerja,
+        j.tmt_jabatan,
+        j.status_jab,
+        COALESCE(m.nama_jabatan, j.jabatan) AS nm_jab,
+        k.kode_cabang,
+        k.nama_kantor
+    FROM tb_jabatan j
+    LEFT JOIN tb_master_jabatan m ON m.kode_jabatan = j.kode_jabatan
+    LEFT JOIN tb_kantor k ON k.kode_kantor_detail = j.unit_kerja
+    WHERE j.id_peg = '$id_peg' AND LOWER(j.status_jab) = 'aktif'
+    ORDER BY j.tmt_jabatan DESC, j.id_jab DESC
+    LIMIT 1
+");
+if ($qJabAktifInfo && mysqli_num_rows($qJabAktifInfo) > 0) {
+    $jabatan_aktif_info = mysqli_fetch_assoc($qJabAktifInfo);
+}
+
 // --- 4. ASSETS FOTO ---
 // --- 4. ASSETS FOTO ---
 $foto_db    = isset($peg['foto']) ? trim($peg['foto']) : '';
@@ -86,8 +108,25 @@ if (!empty($foto_db)) {
     .modal .table thead th { background: #f6faf7; color: #51645d; font-size: .78rem; text-transform: uppercase; border-bottom: 1px solid #dbe8df; }
     .modal .table tbody td { vertical-align: middle; }
     @media (max-width: 576px) {
+        .pegawai-detail-page .simpeg-page-header { align-items: flex-start; flex-direction: column; gap: .75rem; }
+        .pegawai-detail-page .simpeg-page-title { font-size: 1.55rem; line-height: 1.2; }
+        .pegawai-detail-page .simpeg-page-subtitle { font-size: .86rem; }
+        .pegawai-detail-page .profile-header-cover { height: 108px; border-radius: 16px 16px 0 0; }
+        .pegawai-detail-page .profile-user-img { width: 104px; height: 104px; margin-top: -52px; border-width: 4px; }
+        .pegawai-detail-page .card { border-radius: 16px; }
+        .pegawai-detail-page .card-body { padding: 1rem; }
+        .pegawai-detail-page .table-detail tr,
+        .pegawai-detail-page .table-detail td { display: block; width: 100%; }
+        .pegawai-detail-page .table-detail tr { padding: .65rem 0; border-bottom: 1px solid #f1f5f3; }
+        .pegawai-detail-page .table-detail tr td { padding: .15rem 0; border-bottom: 0; }
         .pegawai-detail-page .nav-pills-custom { display: flex; flex-wrap: nowrap; overflow-x: auto; padding: .35rem; }
         .pegawai-detail-page .nav-pills-custom .nav-link { white-space: nowrap; padding: 11px 14px; border-radius: 12px; }
+        .pegawai-detail-page .simpeg-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+        .pegawai-detail-page .simpeg-quick-btn { min-height: 74px; padding: .7rem .5rem; }
+        .modal .modal-dialog { margin: .5rem; }
+        .modal .modal-header,
+        .modal .modal-body { padding: .85rem; }
+        .modal .table { min-width: 520px; }
     }
 </style>
 
@@ -176,6 +215,10 @@ if (!empty($foto_db)) {
                                     <tr><td>Agama</td><td>: <?php echo htmlspecialchars($peg['agama']); ?></td></tr>
                                     <tr><td>Golongan Darah</td><td>: <?php echo htmlspecialchars($peg['gol_darah']); ?></td></tr>
                                     <tr><td>Status Nikah</td><td>: <?php echo htmlspecialchars($peg['status_nikah']); ?></td></tr>
+                                    <tr><td>Status Kepegawaian</td><td>: <?php echo htmlspecialchars($peg['status_kepeg']); ?></td></tr>
+                                    <tr><td>Jabatan Aktif</td><td>: <?php echo $jabatan_aktif_info ? htmlspecialchars($jabatan_aktif_info['nm_jab']) : '-'; ?></td></tr>
+                                    <tr><td>Kode Cabang</td><td>: <?php echo ($jabatan_aktif_info && !empty($jabatan_aktif_info['kode_cabang'])) ? htmlspecialchars($jabatan_aktif_info['kode_cabang']) : '-'; ?></td></tr>
+                                    <tr><td>Nama Kantor</td><td>: <?php echo ($jabatan_aktif_info && !empty($jabatan_aktif_info['nama_kantor'])) ? htmlspecialchars($jabatan_aktif_info['nama_kantor']) : '-'; ?></td></tr>
                                     <tr><td>Alamat</td><td>: <?php echo htmlspecialchars($peg['alamat']); ?></td></tr>
                                     <tr><td>No BPJS TK</td><td>: <?php echo htmlspecialchars($peg['bpjstk']); ?></td></tr>
                                     <tr><td>Tgl Masuk Kerja</td><td>: <?php echo date('d-m-Y', strtotime($peg['tmt_kerja'])); ?></td></tr>
@@ -380,22 +423,33 @@ if (!empty($foto_db)) {
 </div>
 
 <div id="jabatan" class="modal fade" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white"><h5 class="modal-title">Riwayat Jabatan</h5><button type="button" class="close text-white" data-dismiss="modal">&times;</button></div>
             <div class="modal-body">
                 <table class="table table-bordered table-striped">
-                    <thead><tr><th>Jabatan</th><th>TMT</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Jabatan</th><th>Kode Cabang</th><th>Nama Kantor</th><th>TMT</th><th>Status</th></tr></thead>
                     <tbody>
                         <?php 
-                        $qJab = mysqli_query($conn,"SELECT j.tmt_jabatan, j.status_jab, m.nama_jabatan 
-                                                    FROM tb_jabatan j 
-                                                    LEFT JOIN tb_master_jabatan m ON j.jabatan = m.nama_jabatan 
-                                                    WHERE j.id_peg='$id_peg' 
-                                                    ORDER BY j.tmt_jabatan DESC"); 
+                        $qJab = mysqli_query($conn,"
+                            SELECT DISTINCT
+                                j.id_jab,
+                                j.tmt_jabatan,
+                                j.status_jab,
+                                COALESCE(m.nama_jabatan, j.jabatan) AS nama_jabatan,
+                                k.kode_cabang,
+                                k.nama_kantor
+                            FROM tb_jabatan j
+                            LEFT JOIN tb_master_jabatan m ON m.kode_jabatan = j.kode_jabatan
+                            LEFT JOIN tb_kantor k ON k.kode_kantor_detail = j.unit_kerja
+                            WHERE j.id_peg='$id_peg'
+                            ORDER BY j.tmt_jabatan DESC, j.id_jab DESC
+                        "); 
                         while($j=mysqli_fetch_array($qJab)){ ?>
                         <tr>
                             <td><?= !empty($j['nama_jabatan']) ? htmlspecialchars($j['nama_jabatan']) : '<i>(Kode Tidak Dikenal)</i>' ?></td>
+                            <td><?= !empty($j['kode_cabang']) ? htmlspecialchars($j['kode_cabang']) : '-' ?></td>
+                            <td><?= !empty($j['nama_kantor']) ? htmlspecialchars($j['nama_kantor']) : '-' ?></td>
                             <td><?= htmlspecialchars($j['tmt_jabatan']) ?></td>
                             <td><?= htmlspecialchars($j['status_jab']) ?></td>
                         </tr>

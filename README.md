@@ -163,6 +163,26 @@ Progress per 18 Juni 2026 di branch `dev-app`:
 - [x] Menambahkan approval `biodata_update` di modul otorisasi untuk role user pada profil pegawai.
 - [x] Merapikan tampilan `form-ganti-foto` dan `form-ubah-id-peg` agar mengikuti theme modern yang sama.
 - [x] Mengamankan modal gaji dan pangkat di profil pegawai supaya tidak error saat data tanggal/riwayat belum tersedia.
+- [x] Memperbaiki responsif halaman yang sudah masuk fase perombakan:
+  - `otorisasi-approval`
+  - `profil-pegawai`
+  - `view-detail-data-pegawai`
+  - `form-view-data-user`
+  - `preview-edit`
+  - `notifikasi-user`
+- [x] Menambahkan pola filter mobile buka/tutup pada halaman yang sudah dirapikan:
+  - `form-view-data-pegawai`
+  - `otorisasi-approval`
+  - `form-view-data-user`
+- [x] Menyesuaikan density tampilan halaman yang sudah diperbaiki agar spacing dan ukuran teks lebih nyaman di desktop, tablet, dan mobile.
+- [x] Menyamakan modal pengajuan tambah/update keluarga role `user` di `profil-pegawai` dengan referensi form master keluarga:
+  - dropdown pendidikan
+  - dropdown pekerjaan dari `tb_master_pekerjaan`
+  - dropdown status hubungan sesuai pasangan, anak, atau orang tua
+- [x] Menyesuaikan form pengajuan biodata role `user` di `profil-pegawai` agar mengikuti pola `form-master-data-pegawai` tanpa upload foto:
+  - dropdown agama, jenis kelamin, golongan darah, status nikah, status kepegawaian
+  - field BPJS Ketenagakerjaan dan BPJS Kesehatan
+  - tampilan profil ikut menampilkan nomor BPJS
 - [ ] Merapikan halaman-halaman custom yang masih punya CSS inline besar agar benar-benar seragam dengan theme baru.
 - [ ] Migrasi source code lama `home-admin.php?page=...` ke helper route baru secara bertahap di level file.
 - [ ] Memecah query langsung di layer FE menjadi konsumsi REST API.

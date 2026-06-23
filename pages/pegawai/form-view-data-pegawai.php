@@ -81,9 +81,58 @@ if ($hak_akses_user === 'kepala') {
     .pegawai-page .card-header {
         gap: 1rem;
     }
+    .pegawai-page .simpeg-page-title { font-size: 1.55rem; line-height: 1.2; }
+    .pegawai-page .simpeg-page-subtitle { font-size: .9rem; }
+    .pegawai-page .simpeg-table-card { border-radius: 16px; }
+    .pegawai-page .simpeg-tabset .nav-link {
+        font-size: .9rem;
+        font-weight: 800;
+        padding: .55rem .85rem;
+    }
     .pegawai-page .card-header .simpeg-toolbar {
         margin-left: auto;
         justify-content: flex-end;
+    }
+    .pegawai-page .simpeg-toolbar .btn {
+        border-radius: 12px;
+        font-size: .88rem;
+        font-weight: 800;
+        padding: .55rem .85rem;
+    }
+    .pegawai-page .simpeg-filter-panel {
+        padding: 1rem 1.25rem;
+    }
+    .pegawai-page .simpeg-filter-label {
+        font-size: .76rem;
+        font-weight: 800;
+        margin-bottom: .4rem;
+    }
+    .pegawai-page .select2-container--bootstrap4 .select2-selection {
+        min-height: 40px;
+        border-radius: 12px;
+        font-size: .9rem;
+    }
+    .pegawai-page table.dataTable thead th {
+        font-size: .76rem;
+        padding: .72rem .8rem;
+    }
+    .pegawai-page table.dataTable tbody td {
+        font-size: .88rem;
+        padding: .72rem .8rem;
+    }
+    .pegawai-page .simpeg-mobile-filter-toggle {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        border: 1px solid #d9e5dc;
+        border-radius: 10px;
+        background: #fff;
+        color: #42554e;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.45rem 0.7rem;
+        box-shadow: 0 6px 14px rgba(15, 35, 26, 0.06);
     }
     @media (max-width: 768px) {
         .pegawai-page .dt-controls-wrapper { align-items: stretch; }
@@ -93,6 +142,43 @@ if ($hak_akses_user === 'kepala') {
             margin-left: 0;
             width: 100%;
             justify-content: flex-start;
+        }
+        .pegawai-page .card-header {
+            align-items: flex-start !important;
+        }
+        .pegawai-page .simpeg-tabset {
+            flex: 1 1 auto;
+        }
+        .pegawai-page .simpeg-mobile-filter-toggle {
+            display: inline-flex;
+            margin-left: auto;
+        }
+        .pegawai-page .simpeg-page-header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: .75rem;
+            margin-bottom: .85rem;
+        }
+        .pegawai-page .simpeg-page-title { font-size: 1.35rem; }
+        .pegawai-page .simpeg-page-subtitle { font-size: .82rem; }
+        .pegawai-page .simpeg-toolbar .btn { flex: 1 1 auto; }
+        .pegawai-page .simpeg-tabset {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            max-width: calc(100% - 88px);
+        }
+        .pegawai-page .simpeg-tabset .nav-link {
+            white-space: nowrap;
+            font-size: .82rem;
+            padding: .5rem .68rem;
+        }
+        .pegawai-page .simpeg-filter-panel {
+            display: none;
+            border-top: 1px solid #edf3ef;
+            padding: .9rem;
+        }
+        .pegawai-page .simpeg-filter-panel.is-open {
+            display: block;
         }
     }
 </style>
@@ -141,6 +227,10 @@ if ($hak_akses_user === 'kepala') {
               <a href="home-admin.php?page=form-upload-data-pegawai" class="btn btn-light border"><i class="fa fa-file-excel mr-2 text-success"></i> Import Excel</a>
           </div>
           <?php endif; ?>
+
+          <button type="button" class="simpeg-mobile-filter-toggle" data-filter-toggle="#pegawaiFilterPanel" aria-expanded="false">
+              <i class="fa fa-filter"></i> Filter
+          </button>
       </div>
 
       <div class="card-body p-0">
@@ -148,7 +238,7 @@ if ($hak_akses_user === 'kepala') {
 
           <div class="tab-pane fade show active" id="aktif" role="tabpanel">
             
-            <div class="simpeg-filter-panel">
+            <div class="simpeg-filter-panel" id="pegawaiFilterPanel">
                  <div class="row g-3">
                     
                     <div class="col-md-4 col-12 mb-3 mb-md-0">
@@ -266,6 +356,12 @@ if ($hak_akses_user === 'kepala') {
 $(document).ready(function() {
 
   $('.select2').select2({ theme: 'bootstrap4', width: '100%' });
+
+  $('[data-filter-toggle]').on('click', function() {
+      var target = $($(this).data('filter-toggle'));
+      var isOpen = target.toggleClass('is-open').hasClass('is-open');
+      $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
+  });
 
   // Fungsi Render Kolom Pegawai (Foto + Nama + ID)
   function renderPegawai(fotoHtml, namaHtml, idHtml) {

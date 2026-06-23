@@ -69,6 +69,30 @@ document.addEventListener("DOMContentLoaded", () => {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: {
+            onComplete: function() {
+              var chart = this.chart;
+              var ctx = chart.ctx;
+              ctx.save();
+              ctx.font = '600 10px ' + systemFont;
+              ctx.fillStyle = '#7a7f87';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+
+              this.data.datasets.forEach(function(dataset, datasetIndex) {
+                var meta = chart.controller.getDatasetMeta(datasetIndex);
+                meta.data.forEach(function(point, index) {
+                  var value = dataset.data[index];
+                  if (value === null || typeof value === 'undefined') {
+                    return;
+                  }
+                  ctx.fillText(value, point._model.x, point._model.y - 8);
+                });
+              });
+
+              ctx.restore();
+            }
+          },
           
           // --- FIX CHART V2 SYNTAX ---
           legend: { display: false },

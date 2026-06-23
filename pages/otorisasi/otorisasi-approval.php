@@ -223,6 +223,40 @@ $qPending = mysqli_query($koneksi, $sql);
     gap: 14px;
     align-items: end;
   }
+  .filter-mobile-head {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .filter-mobile-title {
+    margin: 0;
+    color: #10231d;
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+  .content .container-fluid,
+  .content-header .container-fluid { max-width: 1320px; }
+  .card-modern { margin-bottom: 18px; }
+  .card-header-modern { padding: 18px 22px; }
+  .page-title { font-size: 1.55rem; line-height: 1.2; }
+  .input-modern { height: 42px; font-size: .9rem; }
+  .form-label-modern { font-size: .74rem; margin-bottom: 6px; }
+  .btn-modern { height: 42px; font-size: .86rem; padding: 9px 18px; }
+  .filter-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    background: #fff;
+    color: #42554e;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0.45rem 0.7rem;
+    box-shadow: 0 6px 14px rgba(15, 35, 26, 0.06);
+  }
 
   /* Table Styling */
   .table-responsive { border-radius: 0 0 16px 16px; }
@@ -261,10 +295,76 @@ $qPending = mysqli_query($koneksi, $sql);
   .badge-soft-secondary { background-color: #f3f4f6; color: #4b5563; }
 
   /* Responsive Tweaks */
+  @media (max-width: 991.98px) {
+    .approval-filter-form {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .table-modern {
+      min-width: 860px;
+    }
+  }
   @media (max-width: 768px) {
+    .content-header .d-flex {
+      align-items: flex-start !important;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .page-title {
+      font-size: 1.35rem;
+      line-height: 1.2;
+    }
+    .card-modern {
+      border-radius: 14px;
+      margin-bottom: 16px;
+    }
+    .card-header-modern {
+      padding: 14px;
+    }
+    .filter-mobile-head {
+      display: flex;
+    }
+    .approval-filter-form {
+      display: none;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .approval-filter-form.is-open {
+      display: grid;
+    }
+    .input-modern,
+    .btn-modern {
+      height: 40px;
+      font-size: 0.86rem;
+    }
     .btn-modern { width: 100%; margin-bottom: 10px; }
     .col-sm-3, .col-sm-2 { margin-bottom: 15px; }
     .filter-actions { flex-direction: column; }
+    .table-responsive {
+      border-radius: 0 0 14px 14px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .table-modern thead th,
+    .table-modern tbody td {
+      padding: 12px;
+      font-size: 0.8rem;
+    }
+  }
+  @media (max-width: 480px) {
+    .content-header {
+      padding-top: 1rem !important;
+    }
+    .page-title {
+      font-size: 1.45rem;
+    }
+    .page-subtitle {
+      font-size: 0.82rem;
+    }
+    .badge-soft {
+      padding: 5px 9px;
+      font-size: 0.68rem;
+    }
   }
 </style>
 
@@ -286,6 +386,13 @@ $qPending = mysqli_query($koneksi, $sql);
   document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('approvalFilterForm');
     if (!form) return;
+    var toggle = document.querySelector('[data-filter-toggle="#approvalFilterForm"]');
+    if (toggle) {
+      toggle.addEventListener('click', function() {
+        var isOpen = form.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
     var timer = null;
     var submitFilter = function() {
       window.clearTimeout(timer);
@@ -304,6 +411,12 @@ $qPending = mysqli_query($koneksi, $sql);
 
     <div class="card card-modern">
       <div class="card-header-modern">
+        <div class="filter-mobile-head">
+          <p class="filter-mobile-title">Filter Data</p>
+          <button type="button" class="filter-toggle-btn" data-filter-toggle="#approvalFilterForm" aria-expanded="false">
+            <i class="fa fa-filter"></i> Filter
+          </button>
+        </div>
         <form method="get" class="approval-filter-form" id="approvalFilterForm">
           <input type="hidden" name="page" value="otorisasi-approval">
 

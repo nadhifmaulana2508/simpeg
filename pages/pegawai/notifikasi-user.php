@@ -69,9 +69,18 @@ mysqli_query($conn, "UPDATE tb_notifikasi SET status_baca = 'read' WHERE id_user
     background: #fff; color: #0f766e; font-weight: 800;
   }
   @media (max-width: 767.98px) {
-    .notif-head { align-items: stretch; flex-direction: column; }
-    .notif-item { grid-template-columns: 36px 1fr; }
+    .notif-page { padding-top: .5rem; }
+    .notif-shell { border-radius: 16px; }
+    .notif-head { align-items: stretch; flex-direction: column; padding: .85rem; }
+    .notif-title { font-size: 1.05rem; }
+    .notif-subtitle { font-size: .8rem; }
+    .btn-notif-back { width: 100%; }
+    .notif-list { padding: .45rem; }
+    .notif-item { grid-template-columns: 36px 1fr; gap: .65rem; padding: .75rem; }
+    .notif-icon { width: 36px; height: 36px; border-radius: 12px; }
     .notif-meta { grid-column: 2; white-space: normal; }
+    .notif-message { font-size: .9rem; }
+    .notif-badge { font-size: .68rem; }
   }
 </style>
 

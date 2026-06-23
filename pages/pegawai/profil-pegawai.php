@@ -125,9 +125,12 @@ if (!function_exists('profile_current_biodata')) {
             'agama' => profile_field($peg, 'agama', ''),
             'gol_darah' => profile_field($peg, 'gol_darah', ''),
             'status_nikah' => profile_field($peg, 'status_nikah', ''),
+            'status_kepeg' => profile_field($peg, 'status_kepeg', ''),
             'alamat' => profile_field($peg, 'alamat', ''),
             'telp' => profile_field($peg, 'telp', ''),
-            'email' => profile_field($peg, 'email', '')
+            'email' => profile_field($peg, 'email', ''),
+            'bpjstk' => profile_field($peg, 'bpjstk', ''),
+            'bpjskes' => profile_field($peg, 'bpjskes', '')
         );
     }
 }
@@ -192,9 +195,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['biodata_request'])) {
             'agama' => isset($_POST['agama']) ? trim($_POST['agama']) : '',
             'gol_darah' => isset($_POST['gol_darah']) ? trim($_POST['gol_darah']) : '',
             'status_nikah' => isset($_POST['status_nikah']) ? trim($_POST['status_nikah']) : '',
+            'status_kepeg' => isset($_POST['status_kepeg']) ? trim($_POST['status_kepeg']) : '',
             'alamat' => isset($_POST['alamat']) ? trim($_POST['alamat']) : '',
             'telp' => isset($_POST['telp']) ? trim($_POST['telp']) : '',
-            'email' => isset($_POST['email']) ? trim($_POST['email']) : ''
+            'email' => isset($_POST['email']) ? trim($_POST['email']) : '',
+            'bpjstk' => isset($_POST['bpjstk']) ? trim($_POST['bpjstk']) : '',
+            'bpjskes' => isset($_POST['bpjskes']) ? trim($_POST['bpjskes']) : ''
         );
 
         if ($payload['nama'] === '') {
@@ -309,6 +315,41 @@ if (!empty($biodata_preview_payload)) {
     }
 }
 
+$jabatan_aktif_info = null;
+$qJabAktifInfo = mysqli_query($conn, "
+    SELECT
+        j.id_jab,
+        j.kode_jabatan,
+        j.unit_kerja,
+        j.tmt_jabatan,
+        j.status_jab,
+        COALESCE(m.nama_jabatan, j.jabatan) AS nm_jab,
+        k.kode_cabang,
+        k.nama_kantor
+    FROM tb_jabatan j
+    LEFT JOIN tb_master_jabatan m ON m.kode_jabatan = j.kode_jabatan
+    LEFT JOIN tb_kantor k ON k.kode_kantor_detail = j.unit_kerja
+    WHERE j.id_peg = '$id_peg' AND LOWER(j.status_jab) = 'aktif'
+    ORDER BY j.tmt_jabatan DESC, j.id_jab DESC
+    LIMIT 1
+");
+if ($qJabAktifInfo && mysqli_num_rows($qJabAktifInfo) > 0) {
+    $jabatan_aktif_info = mysqli_fetch_assoc($qJabAktifInfo);
+}
+
+$family_pendidikan_options = array('Belum Sekolah', 'PAUD', 'TK', 'SD', 'SMP', 'SMA', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3');
+$biodata_agama_options = array('Islam', 'Protestan', 'Katolik', 'Hindu', 'Budha', 'KongHuCu');
+$biodata_gol_darah_options = array('-', 'A', 'B', 'AB', 'O');
+$biodata_status_nikah_options = array('Menikah', 'Belum Menikah', 'Janda', 'Duda');
+$biodata_status_kepeg_options = array('Tetap', 'Kontrak', 'Outsource');
+$family_pekerjaan_options = array();
+$qFamilyJob = mysqli_query($conn, "SELECT id_pekerjaan, desc_pekerjaan FROM tb_master_pekerjaan ORDER BY desc_pekerjaan ASC");
+if ($qFamilyJob) {
+    while ($job = mysqli_fetch_assoc($qFamilyJob)) {
+        $family_pekerjaan_options[] = $job;
+    }
+}
+
 // --- 4. ASSETS FOTO ---
 $foto_db    = isset($peg['foto']) ? trim($peg['foto']) : '';
 $jk         = isset($peg['jk']) ? strtolower(trim($peg['jk'])) : '';
@@ -377,8 +418,63 @@ $src_foto   = function_exists('simpeg_resolve_photo_path') ? simpeg_resolve_phot
     }
     .modal .table tbody td { vertical-align: middle; }
     @media (max-width: 576px) {
+        .profile-shell {
+            padding: 0.25rem 0;
+        }
+        .profile-header-cover {
+            height: 108px;
+            border-radius: 16px 16px 0 0;
+        }
+        .profile-user-img {
+            width: 104px;
+            height: 104px;
+            margin-top: -52px;
+            border-width: 4px;
+        }
+        .profile-card {
+            border-radius: 16px;
+            margin-bottom: 1rem;
+        }
+        .profile-card .card-body {
+            padding: 1rem;
+        }
         .nav-pills-custom { display: flex; flex-wrap: nowrap; overflow-x: auto; padding: .35rem; }
         .nav-pills-custom .nav-link { white-space: nowrap; padding: 11px 14px; border-radius: 12px; }
+        .table-detail tr,
+        .table-detail td {
+            display: block;
+            width: 100% !important;
+        }
+        .table-detail tr {
+            padding: .65rem 0;
+            border-bottom: 1px solid #edf3f2;
+        }
+        .table-detail tr td {
+            padding: .15rem 0;
+            border-bottom: 0;
+        }
+        .btn-quick {
+            min-height: 74px;
+            padding: .7rem .5rem;
+        }
+        .tab-pane .d-flex.justify-content-between {
+            align-items: flex-start !important;
+            flex-direction: column;
+            gap: .6rem;
+        }
+        .tab-pane .d-flex.justify-content-between .btn {
+            width: 100%;
+        }
+        .modal .modal-dialog {
+            margin: .5rem;
+        }
+        .modal .modal-header,
+        .modal .modal-body {
+            padding: .85rem;
+        }
+        .modal .table {
+            min-width: 520px;
+        }
     }
     .btn-quick {
         display: flex; flex-direction: column; align-items: center; gap: 5px;
@@ -417,6 +513,20 @@ $src_foto   = function_exists('simpeg_resolve_photo_path') ? simpeg_resolve_phot
         color: #35504e;
     }
     .table-responsive { display: block; width: 100%; overflow-x: auto; }
+    .profile-shell .card-body { font-size: .92rem; }
+    .profile-shell label,
+    .modal label { color: #52635c; font-size: .82rem; font-weight: 800; margin-bottom: .35rem; }
+    .profile-shell .form-control,
+    .profile-shell select.form-control,
+    .modal .form-control,
+    .modal select.form-control { min-height: 40px; border-radius: 12px; font-size: .9rem; }
+    .profile-shell .form-group,
+    .modal .form-group { margin-bottom: .85rem; }
+    .profile-shell .btn,
+    .modal .btn { border-radius: 12px; font-weight: 800; }
+    .profile-shell .table { font-size: .88rem; }
+    .profile-shell .table th,
+    .profile-shell .table td { padding: .62rem .75rem; }
 </style>
 
 <section class="content-header pt-4 pb-2">
@@ -452,7 +562,11 @@ $src_foto   = function_exists('simpeg_resolve_photo_path') ? simpeg_resolve_phot
                             <p class="text-muted small mb-1"><i class="fas fa-phone mr-2"></i> Telepon</p>
                             <h6 class="mb-3 ml-4"><?php echo $peg['telp'] ? $peg['telp'] : '-'; ?></h6>
                             <p class="text-muted small mb-1"><i class="fas fa-envelope mr-2"></i> Email</p>
-                            <h6 class="mb-0 ml-4 small text-truncate"><?php echo $peg['email'] ? $peg['email'] : '-'; ?></h6>
+                            <h6 class="mb-3 ml-4 small text-truncate"><?php echo $peg['email'] ? $peg['email'] : '-'; ?></h6>
+                            <p class="text-muted small mb-1"><i class="fas fa-briefcase-medical mr-2"></i> BPJS TK</p>
+                            <h6 class="mb-3 ml-4 small"><?php echo profile_field($peg, 'bpjstk') ? profile_field($peg, 'bpjstk') : '-'; ?></h6>
+                            <p class="text-muted small mb-1"><i class="fas fa-heartbeat mr-2"></i> BPJS Kesehatan</p>
+                            <h6 class="mb-0 ml-4 small"><?php echo profile_field($peg, 'bpjskes') ? profile_field($peg, 'bpjskes') : '-'; ?></h6>
                         </div>
                     </div>
                 </div>
@@ -507,8 +621,14 @@ $src_foto   = function_exists('simpeg_resolve_photo_path') ? simpeg_resolve_phot
                                     <tr><td>Agama</td><td>: <?php echo profile_field($peg, 'agama'); ?></td></tr>
                                     <tr><td>Golongan Darah</td><td>: <?php echo profile_field($peg, 'gol_darah'); ?></td></tr>
                                     <tr><td>Status Nikah</td><td>: <?php echo profile_field($peg, 'status_nikah'); ?></td></tr>
+                                    <tr><td>Status Kepegawaian</td><td>: <?php echo profile_field($peg, 'status_kepeg'); ?></td></tr>
+                                    <tr><td>Jabatan Aktif</td><td>: <?php echo $jabatan_aktif_info ? profile_e($jabatan_aktif_info['nm_jab']) : '-'; ?></td></tr>
+                                    <tr><td>Kode Cabang</td><td>: <?php echo ($jabatan_aktif_info && !empty($jabatan_aktif_info['kode_cabang'])) ? profile_e($jabatan_aktif_info['kode_cabang']) : '-'; ?></td></tr>
+                                    <tr><td>Nama Kantor</td><td>: <?php echo ($jabatan_aktif_info && !empty($jabatan_aktif_info['nama_kantor'])) ? profile_e($jabatan_aktif_info['nama_kantor']) : '-'; ?></td></tr>
                                     <tr><td>Telepon</td><td>: <?php echo profile_field($peg, 'telp'); ?></td></tr>
                                     <tr><td>Email</td><td>: <?php echo profile_field($peg, 'email'); ?></td></tr>
+                                    <tr><td>BPJS TK</td><td>: <?php echo profile_field($peg, 'bpjstk'); ?></td></tr>
+                                    <tr><td>BPJS Kesehatan</td><td>: <?php echo profile_field($peg, 'bpjskes'); ?></td></tr>
                                     <tr><td>Alamat</td><td>: <?php echo nl2br(profile_e(profile_field($peg, 'alamat'))); ?></td></tr>
                                 </table>
                                 
@@ -783,16 +903,31 @@ $src_foto   = function_exists('simpeg_resolve_photo_path') ? simpeg_resolve_phot
 </div>
 
 <div id="jabatan" class="modal fade" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white"><h5 class="modal-title">Riwayat Jabatan</h5><button type="button" class="close text-white" data-dismiss="modal">&times;</button></div>
-            <div class="modal-body"><table class="table table-bordered table-striped"><thead><tr><th>Jabatan</th><th>TMT</th><th>Status</th></tr></thead>
+            <div class="modal-body"><table class="table table-bordered table-striped"><thead><tr><th>Jabatan</th><th>Kode Cabang</th><th>Nama Kantor</th><th>TMT</th><th>Status</th></tr></thead>
             <tbody>
 <?php 
-$qJab = mysqli_query($conn, "SELECT j.id_jab, j.tmt_jabatan, j.status_jab, COALESCE(m.nama_jabatan, j.jabatan) AS nm_jab FROM tb_jabatan j LEFT JOIN tb_master_jabatan m ON j.jabatan = m.nama_jabatan WHERE j.id_peg='$id_peg' ORDER BY j.tmt_jabatan DESC");
+$qJab = mysqli_query($conn, "
+    SELECT DISTINCT
+        j.id_jab,
+        j.tmt_jabatan,
+        j.status_jab,
+        COALESCE(m.nama_jabatan, j.jabatan) AS nm_jab,
+        k.kode_cabang,
+        k.nama_kantor
+    FROM tb_jabatan j
+    LEFT JOIN tb_master_jabatan m ON m.kode_jabatan = j.kode_jabatan
+    LEFT JOIN tb_kantor k ON k.kode_kantor_detail = j.unit_kerja
+    WHERE j.id_peg='$id_peg'
+    ORDER BY j.tmt_jabatan DESC, j.id_jab DESC
+");
 while($j = mysqli_fetch_array($qJab)){ ?>
     <tr>
         <td><?= $j['nm_jab'] ?></td>
+        <td><?= !empty($j['kode_cabang']) ? profile_e($j['kode_cabang']) : '-' ?></td>
+        <td><?= !empty($j['nama_kantor']) ? profile_e($j['nama_kantor']) : '-' ?></td>
         <td><?= $j['tmt_jabatan'] ?></td>
         <td>
             <?php if($j['status_jab'] == 'Aktif'): ?>
@@ -863,19 +998,31 @@ while($j = mysqli_fetch_array($qJab)){ ?>
                     </div>
                     <div class="col-md-6 form-group">
                         <label>Pendidikan</label>
-                        <input type="text" class="form-control" name="pendidikan" id="family_pendidikan">
+                        <select class="form-control" name="pendidikan" id="family_pendidikan">
+                            <option value="">- Pilih -</option>
+                            <?php foreach ($family_pendidikan_options as $pendidikan_opt): ?>
+                                <option value="<?php echo profile_e($pendidikan_opt); ?>"><?php echo profile_e($pendidikan_opt); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-6 form-group">
                         <label>Status Hubungan</label>
-                        <input type="text" class="form-control" name="status_hub" id="family_status_hub">
+                        <select class="form-control" name="status_hub" id="family_status_hub">
+                            <option value="">- Pilih -</option>
+                        </select>
                     </div>
-                    <div class="col-md-4 form-group">
-                        <label>ID Pekerjaan</label>
-                        <input type="text" class="form-control" name="id_pekerjaan" id="family_id_pekerjaan">
-                    </div>
-                    <div class="col-md-8 form-group">
+                    <div class="col-md-12 form-group">
                         <label>Pekerjaan</label>
-                        <input type="text" class="form-control" name="pekerjaan" id="family_pekerjaan">
+                        <input type="hidden" name="id_pekerjaan" id="family_id_pekerjaan">
+                        <input type="hidden" name="pekerjaan" id="family_pekerjaan">
+                        <select class="form-control" id="family_picker_pekerjaan">
+                            <option value="">- Pilih -</option>
+                            <?php foreach ($family_pekerjaan_options as $job_opt): ?>
+                                <option value="<?php echo profile_e($job_opt['id_pekerjaan']); ?>" data-nama="<?php echo profile_e($job_opt['desc_pekerjaan']); ?>">
+                                    <?php echo profile_e($job_opt['desc_pekerjaan']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-6 form-group family-field-pasangan">
                         <label>No HP Pasangan</label>
@@ -951,19 +1098,48 @@ while($j = mysqli_fetch_array($qJab)){ ?>
                     </div>
                     <div class="col-md-6 form-group">
                         <label>Agama</label>
-                        <input type="text" class="form-control" name="agama" value="<?php echo profile_e(profile_field($peg, 'agama', '')); ?>">
+                        <select class="form-control" name="agama">
+                            <option value="">-- Pilih Agama --</option>
+                            <?php foreach ($biodata_agama_options as $agama_opt): ?>
+                                <option value="<?php echo profile_e($agama_opt); ?>" <?php echo profile_field($peg, 'agama', '') === $agama_opt ? 'selected' : ''; ?>><?php echo profile_e($agama_opt); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label>Golongan Darah</label>
-                        <input type="text" class="form-control" name="gol_darah" value="<?php echo profile_e(profile_field($peg, 'gol_darah', '')); ?>">
+                        <select class="form-control" name="gol_darah">
+                            <?php foreach ($biodata_gol_darah_options as $gol_opt): ?>
+                                <option value="<?php echo profile_e($gol_opt); ?>" <?php echo profile_field($peg, 'gol_darah', '') === $gol_opt ? 'selected' : ''; ?>><?php echo profile_e($gol_opt); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label>Status Nikah</label>
-                        <input type="text" class="form-control" name="status_nikah" value="<?php echo profile_e(profile_field($peg, 'status_nikah', '')); ?>">
+                        <select class="form-control" name="status_nikah">
+                            <?php foreach ($biodata_status_nikah_options as $status_nikah_opt): ?>
+                                <option value="<?php echo profile_e($status_nikah_opt); ?>" <?php echo profile_field($peg, 'status_nikah', '') === $status_nikah_opt ? 'selected' : ''; ?>><?php echo profile_e($status_nikah_opt); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label>Telepon</label>
                         <input type="text" class="form-control" name="telp" value="<?php echo profile_e(profile_field($peg, 'telp', '')); ?>">
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label>Status Kepegawaian</label>
+                        <select class="form-control" name="status_kepeg">
+                            <?php foreach ($biodata_status_kepeg_options as $status_kepeg_opt): ?>
+                                <option value="<?php echo profile_e($status_kepeg_opt); ?>" <?php echo profile_field($peg, 'status_kepeg', '') === $status_kepeg_opt ? 'selected' : ''; ?>><?php echo profile_e($status_kepeg_opt); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label>BPJS Ketenagakerjaan</label>
+                        <input type="text" class="form-control" name="bpjstk" value="<?php echo profile_e(profile_field($peg, 'bpjstk', '')); ?>">
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label>BPJS Kesehatan</label>
+                        <input type="text" class="form-control" name="bpjskes" value="<?php echo profile_e(profile_field($peg, 'bpjskes', '')); ?>">
                     </div>
                     <div class="col-md-12 form-group">
                         <label>Email</label>
@@ -989,31 +1165,63 @@ while($j = mysqli_fetch_array($qJab)){ ?>
 <?php if ($bisa_request_keluarga): ?>
 <script>
 $(function(){
+    var familyStatusOptions = {
+        pasangan: ['Suami', 'Istri'],
+        anak: ['Anak Kandung', 'Anak Tiri', 'Anak Angkat'],
+        ortu: ['Ayah Kandung', 'Ibu Kandung', 'Ayah Tiri', 'Ibu Tiri', 'Mertua L', 'Mertua P', 'Wali']
+    };
+
     function setVal(name, value) {
         $('#family_' + name).val(value || '');
     }
+
+    function familyData(btn, key) {
+        var value = btn.attr('data-' + key);
+        return typeof value === 'undefined' ? btn.data(key) : value;
+    }
+
+    function renderFamilyStatusOptions(scope, selected) {
+        var options = familyStatusOptions[scope] || [];
+        var select = $('#family_status_hub');
+        select.html('<option value="">- Pilih -</option>');
+        for (var i = 0; i < options.length; i++) {
+            var value = options[i];
+            select.append($('<option>', { value: value, text: value }));
+        }
+        select.val(selected || '');
+    }
+
+    $('#family_picker_pekerjaan').on('change', function(){
+        var selected = $(this).find(':selected');
+        $('#family_id_pekerjaan').val($(this).val() || '');
+        $('#family_pekerjaan').val(selected.data('nama') || '');
+    });
 
     $('.js-family-open').on('click', function(){
         var btn = $(this);
         var scope = btn.data('scope');
 
         $('#family_scope').val(scope);
-        $('#family_action').val(btn.data('action'));
-        $('#family_record_id').val(btn.data('record') || '');
-        $('#family_modal_title').text(btn.data('title') || 'Pengajuan Data Keluarga');
+        $('#family_action').val(familyData(btn, 'action'));
+        $('#family_record_id').val(familyData(btn, 'record') || '');
+        $('#family_modal_title').text(familyData(btn, 'title') || 'Pengajuan Data Keluarga');
 
-        setVal('nik', btn.data('nik'));
-        setVal('nama', btn.data('nama'));
-        setVal('tmp_lhr', btn.data('tmp_lhr'));
-        setVal('tgl_lhr', btn.data('tgl_lhr'));
-        setVal('pendidikan', btn.data('pendidikan'));
-        setVal('id_pekerjaan', btn.data('id_pekerjaan'));
-        setVal('pekerjaan', btn.data('pekerjaan'));
-        setVal('status_hub', btn.data('status_hub'));
-        setVal('hp', btn.data('hp'));
-        setVal('bpjs_pasangan', btn.data('bpjs_pasangan'));
-        setVal('anak_ke', btn.data('anak_ke'));
-        setVal('bpjs_anak', btn.data('bpjs_anak'));
+        setVal('nik', familyData(btn, 'nik'));
+        setVal('nama', familyData(btn, 'nama'));
+        setVal('tmp_lhr', familyData(btn, 'tmp_lhr'));
+        setVal('tgl_lhr', familyData(btn, 'tgl_lhr'));
+        setVal('pendidikan', familyData(btn, 'pendidikan'));
+        setVal('id_pekerjaan', familyData(btn, 'id_pekerjaan'));
+        setVal('pekerjaan', familyData(btn, 'pekerjaan'));
+        renderFamilyStatusOptions(scope, familyData(btn, 'status_hub'));
+        $('#family_picker_pekerjaan').val(familyData(btn, 'id_pekerjaan') || '').trigger('change');
+        if (!familyData(btn, 'id_pekerjaan') && familyData(btn, 'pekerjaan')) {
+            $('#family_pekerjaan').val(familyData(btn, 'pekerjaan'));
+        }
+        setVal('hp', familyData(btn, 'hp'));
+        setVal('bpjs_pasangan', familyData(btn, 'bpjs_pasangan'));
+        setVal('anak_ke', familyData(btn, 'anak_ke'));
+        setVal('bpjs_anak', familyData(btn, 'bpjs_anak'));
 
         $('.family-field-pasangan').toggle(scope === 'pasangan');
         $('.family-field-anak').toggle(scope === 'anak');
