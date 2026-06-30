@@ -10,6 +10,17 @@ if (session_id()==='') session_start();
 @include_once __DIR__ . '/../../dist/functions.php';
 if (!isset($conn)) { @include_once __DIR__ . '/../../config/koneksi.php'; $conn = isset($koneksi)?$koneksi:null; }
 function e($s){ return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
+function jabatan_page_url($page, $params = array()) {
+    if (function_exists('page_url')) {
+        return page_url($page, $params);
+    }
+
+    $url = 'home-admin.php?page=' . rawurlencode($page);
+    if (!empty($params)) {
+        $url .= '&' . http_build_query($params);
+    }
+    return $url;
+}
 
 // ====== 1. Ambil Data untuk Dropdown Filter (Unit & Jabatan) ======
 $units = [];
@@ -70,6 +81,13 @@ if($conn){
 </head>
 <body>
 
+<?php
+  $detailBaseUrl = jabatan_page_url('view-detail-data-pegawai');
+  $manageBaseUrl = jabatan_page_url('form-master-data-jabatan');
+  $createHistoryUrl = jabatan_page_url('form-master-create-history-jabatan');
+  $homeUrl = jabatan_page_url('dashboard');
+?>
+
 <div class="container-fluid py-4">
   <div class="card card-modern">
     
@@ -81,9 +99,9 @@ if($conn){
         <div class="page-subtitle">Menampilkan seluruh jabatan pegawai yang berstatus Aktif saat ini.</div>
       </div>
       <div class="d-flex gap-2">
-        <a href="home-admin.php" class="btn-custom btn-light-soft"><i class="fas fa-home"></i></a>
-        <a href="home-admin.php?page=form-import-jabatan" class="btn-custom btn-success-soft"><i class="fas fa-file-excel"></i> Import</a>
-        <a href="home-admin.php?page=form-master-create-history-jabatan" class="btn-custom btn-primary-soft"><i class="fas fa-plus"></i> Tambah Data</a>
+        <a href="<?= e($homeUrl) ?>" class="btn-custom btn-light-soft"><i class="fas fa-home"></i></a>
+        <a href="<?= e(jabatan_page_url('form-import-jabatan')) ?>" class="btn-custom btn-success-soft"><i class="fas fa-file-excel"></i> Import</a>
+        <a href="<?= e($createHistoryUrl) ?>" class="btn-custom btn-primary-soft"><i class="fas fa-plus"></i> Tambah Data</a>
       </div>
     </div>
 
@@ -140,6 +158,8 @@ if($conn){
 
 <script>
 $(document).ready(function(){
+  var detailBaseUrl = <?= json_encode($detailBaseUrl) ?>;
+  var manageBaseUrl = <?= json_encode($manageBaseUrl) ?>;
   
   // 1. Inisialisasi Select2
   $('.select2').select2({
@@ -188,7 +208,7 @@ $(document).ready(function(){
         render: function(data, type, row) {
              var nama = data || 'Tanpa Nama';
              var id = row.id_peg || row.nip || '-';
-             return '<div class="fw-bold text-dark">'+nama+'</div><small class="text-muted"><i class="fas fa-id-card me-1"></i>'+id+'</small>';
+             return '<div class="fw-bold"><a href="' + detailBaseUrl + '?id_peg=' + encodeURIComponent(id) + '" class="text-dark text-decoration-none">'+nama+'</a></div><small class="text-muted"><i class="fas fa-id-card me-1"></i>'+id+'</small>';
         }
       },
 
@@ -238,10 +258,12 @@ $(document).ready(function(){
       { 
         data: null, orderable: false, className: 'text-center',
         render: function(data, type, row) {
+            var detailUrl = detailBaseUrl + '?id_peg=' + encodeURIComponent(row.id_peg);
+            var manageUrl = manageBaseUrl + '?uid=' + encodeURIComponent(row.id_peg);
             return `
               <div class="btn-group" role="group">
-                <a href="home-admin.php?page=view-detail-data-pegawai&id_peg=${row.id_peg}" class="btn btn-sm btn-light-soft" title="Lihat Profil"><i class="fas fa-user"></i></a>
-                <a href="home-admin.php?page=form-master-data-jabatan&uid=${row.id_peg}" class="btn btn-sm btn-light-soft text-primary" title="Mutasi/Edit"><i class="fas fa-pencil-alt"></i></a>
+                <a href="${detailUrl}" class="btn btn-sm btn-light-soft" title="Lihat Profil"><i class="fas fa-user"></i></a>
+                <a href="${manageUrl}" class="btn btn-sm btn-light-soft text-primary" title="Mutasi/Edit"><i class="fas fa-pencil-alt"></i></a>
               </div>
             `;
         }

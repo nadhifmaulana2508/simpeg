@@ -68,6 +68,31 @@ function bersihkanAngka($str) {
     return preg_replace('/[^0-9]/', '', $str);
 }
 
+function pasangan_preview_token() {
+    return sha1(uniqid('pasangan-import-', true) . mt_rand());
+}
+
+function import_token_equals($known, $user) {
+    if (function_exists('hash_equals')) {
+        return hash_equals($known, $user);
+    }
+
+    $known = (string) $known;
+    $user = (string) $user;
+
+    if (strlen($known) !== strlen($user)) {
+        return false;
+    }
+
+    $result = 0;
+    $length = strlen($known);
+    for ($i = 0; $i < $length; $i++) {
+        $result |= ord($known[$i]) ^ ord($user[$i]);
+    }
+
+    return $result === 0;
+}
+
 try {
     // 1. KONEKSI
     $path_koneksi = '../../dist/koneksi.php'; 
@@ -132,12 +157,16 @@ try {
         
         if ($count > $limit) $html .= '<div class="alert alert-info py-2 mt-2"><i class="fas fa-info-circle"></i> Menampilkan 10 dari '.$count.' data.</div>';
 
+        $preview_token = pasangan_preview_token();
+        $_SESSION['import_pasangan_preview_rows'] = $json_rows;
+        $_SESSION['import_pasangan_preview_token'] = $preview_token;
+        $_SESSION['import_pasangan_preview_created_at'] = time();
+        session_write_close();
+
         $html .= '<hr><div class="text-right">';
         $html .= '<button type="button" class="btn btn-primary" id="btnSimpanPasangan"><i class="fas fa-save"></i> Proses Simpan & Update</button>';
         $html .= '</div>';
-        
-        $json_str = json_encode($json_rows);
-        $html .= '<textarea id="json_data_pasangan" style="display:none;">' . $json_str . '</textarea>';
+        $html .= '<input type="hidden" id="import_pasangan_preview_token" value="' . htmlspecialchars($preview_token, ENT_QUOTES, 'UTF-8') . '">';
 
         ob_clean();
         echo json_encode(['status' => 'success', 'html' => $html]);
@@ -146,9 +175,21 @@ try {
 
     // --- 3. PROSES SAVE (MANUAL ID & UPSERT & LINUX SAFE) ---
     elseif ($action === 'save') {
-        if (!isset($_POST['data_pasangan'])) throw new Exception("Data tidak diterima");
-        $data = json_decode($_POST['data_pasangan'], true);
-        if (!$data) throw new Exception("Gagal decode JSON data");
+        $data = array();
+        $posted_token = isset($_POST['preview_token']) ? trim($_POST['preview_token']) : '';
+        if ($posted_token !== '' &&
+            isset($_SESSION['import_pasangan_preview_token']) &&
+            import_token_equals($_SESSION['import_pasangan_preview_token'], $posted_token) &&
+            isset($_SESSION['import_pasangan_preview_rows']) &&
+            is_array($_SESSION['import_pasangan_preview_rows'])) {
+            $data = $_SESSION['import_pasangan_preview_rows'];
+        } elseif (isset($_POST['data_pasangan'])) {
+            $data = json_decode($_POST['data_pasangan'], true);
+        }
+        if (!$data || !is_array($data)) throw new Exception("Data import tidak diterima atau sudah kadaluarsa");
+
+        unset($_SESSION['import_pasangan_preview_rows'], $_SESSION['import_pasangan_preview_token'], $_SESSION['import_pasangan_preview_created_at']);
+        session_write_close();
         
         $total_insert = 0;
         $total_update = 0;

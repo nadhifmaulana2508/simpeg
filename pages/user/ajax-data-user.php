@@ -155,7 +155,8 @@ if($q){
         // Info User
         $id_user_tampil = !empty($r['id_user']) ? $r['id_user'] : $r['apk_id_peg'];
         $nama_tampil = !empty($r['nama_user']) ? $r['nama_user'] : $r['pegawai_nama'];
-        $user_info = '<div><b>'.h($nama_tampil).'</b></div><small class="text-muted">@'.h($id_user_tampil).'</small>';
+        $profile_url = 'home-admin.php?page=view-detail-data-pegawai&id_peg=' . rawurlencode($r['apk_id_peg']);
+        $user_info = '<div><a href="'.$profile_url.'" class="font-weight-bold user-name-link">'.h($nama_tampil).'</a></div><small class="text-muted">@'.h($id_user_tampil).'</small>';
         
         $role_raw = strtolower(trim(isset($r['hak_akses']) ? $r['hak_akses'] : 'user'));
         if ($role_raw === '') $role_raw = 'user';
@@ -196,11 +197,13 @@ if($q){
         // Tombol Aksi
         if (!empty($r['id_user'])) {
             $aksi = '<div class="user-action-group">
+                        <a href="'.$profile_url.'" class="user-action-btn user-action-view" title="Lihat Profil"><i class="fas fa-user"></i></a>
                         <a href="home-admin.php?page=form-master-data-user&mode=edit&id='.h($r['id_user']).'" class="user-action-btn user-action-edit" title="Edit Role"><i class="fas fa-pen"></i></a>
                         <button type="button" class="user-action-btn user-action-delete btn-delete" data-id="'.h($r['id_user']).'" title="Nonaktifkan"><i class="fas fa-trash"></i></button>
                      </div>';
         } else {
             $aksi = '<div class="user-action-group">
+                        <a href="'.$profile_url.'" class="user-action-btn user-action-view" title="Lihat Profil"><i class="fas fa-user"></i></a>
                         <a href="home-admin.php?page=form-master-data-user&mode=create&id_pegawai='.h($r['apk_id_peg']).'" class="user-action-btn user-action-edit" title="Buat Role"><i class="fas fa-user-plus"></i></a>
                      </div>';
         }

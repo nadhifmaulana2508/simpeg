@@ -87,6 +87,77 @@ function gen_uuid() {
     );
 }
 
+function import_preview_token() {
+    return sha1(uniqid('pegawai-import-', true) . mt_rand());
+}
+
+function import_token_equals($known, $user) {
+    if (function_exists('hash_equals')) {
+        return hash_equals($known, $user);
+    }
+
+    $known = (string) $known;
+    $user = (string) $user;
+
+    if (strlen($known) !== strlen($user)) {
+        return false;
+    }
+
+    $result = 0;
+    $length = strlen($known);
+    for ($i = 0; $i < $length; $i++) {
+        $result |= ord($known[$i]) ^ ord($user[$i]);
+    }
+
+    return $result === 0;
+}
+
+function sync_related_employee_id($conn, $old_id, $new_id) {
+    $old_id = mysqli_real_escape_string($conn, $old_id);
+    $new_id = mysqli_real_escape_string($conn, $new_id);
+
+    $schemaRes = mysqli_query($conn, "SELECT DATABASE() AS db_name");
+    $schemaRow = $schemaRes ? mysqli_fetch_assoc($schemaRes) : null;
+    $dbName = ($schemaRow && !empty($schemaRow['db_name'])) ? $schemaRow['db_name'] : '';
+    if ($dbName === '') {
+        return;
+    }
+    $dbNameSafe = mysqli_real_escape_string($conn, $dbName);
+
+    $tables = array();
+    $colRes = mysqli_query($conn, "
+        SELECT TABLE_NAME, COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = '$dbNameSafe'
+          AND COLUMN_NAME IN ('id_peg', 'id_pegawai')
+    ");
+    if ($colRes) {
+        while ($col = mysqli_fetch_assoc($colRes)) {
+            $tableName = $col['TABLE_NAME'];
+            $columnName = $col['COLUMN_NAME'];
+            if (!isset($tables[$tableName])) {
+                $tables[$tableName] = array();
+            }
+            $tables[$tableName][] = $columnName;
+        }
+    }
+
+    foreach ($tables as $tableName => $columns) {
+        if ($tableName === 'tb_pegawai') {
+            continue;
+        }
+
+        foreach ($columns as $columnName) {
+            $tableSafe = '`' . str_replace('`', '``', $tableName) . '`';
+            $columnSafe = '`' . str_replace('`', '``', $columnName) . '`';
+            mysqli_query($conn, "UPDATE $tableSafe SET $columnSafe = '$new_id' WHERE $columnSafe = '$old_id'");
+        }
+    }
+
+    mysqli_query($conn, "UPDATE tb_user SET id_user = '$new_id' WHERE id_user = '$old_id'");
+    mysqli_query($conn, "UPDATE tb_angkat SET id_peg_baru = '$new_id' WHERE id_peg_baru = '$old_id'");
+}
+
 // --- CORE LOGIC ---
 try {
     $path_koneksi = '../../dist/koneksi.php'; 
@@ -183,10 +254,14 @@ try {
             $html .= '<div class="alert alert-info py-2 my-2"><i class="fas fa-info-circle"></i> Menampilkan 15 dari '.count($rows).' baris.</div>';
         }
 
+        $preview_token = import_preview_token();
+        $_SESSION['import_pegawai_preview_rows'] = $rows;
+        $_SESSION['import_pegawai_preview_token'] = $preview_token;
+        $_SESSION['import_pegawai_preview_created_at'] = time();
+        session_write_close();
+
         $html .= '<hr><div class="text-right"><button type="button" class="btn btn-primary" id="btnSimpanKolektif"><i class="fas fa-save"></i> Proses Import & Update</button></div>';
-        
-        $json_rows = json_encode($rows);
-        $html .= '<textarea id="json_data_pegawai" style="display:none;">' . htmlspecialchars($json_rows) . '</textarea>';
+        $html .= '<input type="hidden" id="import_preview_token" value="' . htmlspecialchars($preview_token, ENT_QUOTES, 'UTF-8') . '">';
 
         ob_clean();
         echo json_encode(['status' => 'success', 'html' => $html]);
@@ -197,14 +272,27 @@ try {
     // B. MODE SAVE (EKSEKUSI DATABASE)
     // ==========================================================
     elseif ($action === 'save') {
-        if (!isset($_POST['data_pegawai'])) throw new Exception("Data import tidak ditemukan.");
-        
-        $data = json_decode($_POST['data_pegawai'], true);
-        if (!$data) throw new Exception("Format data corrupt.");
+        $data = array();
+        $posted_token = isset($_POST['preview_token']) ? trim($_POST['preview_token']) : '';
+
+        if ($posted_token !== '' &&
+            isset($_SESSION['import_pegawai_preview_token']) &&
+            import_token_equals($_SESSION['import_pegawai_preview_token'], $posted_token) &&
+            isset($_SESSION['import_pegawai_preview_rows']) &&
+            is_array($_SESSION['import_pegawai_preview_rows'])) {
+            $data = $_SESSION['import_pegawai_preview_rows'];
+        } elseif (isset($_POST['data_pegawai'])) {
+            $data = json_decode($_POST['data_pegawai'], true);
+        }
+
+        if (!$data || !is_array($data)) throw new Exception("Data import tidak ditemukan atau sudah kadaluarsa.");
 
         $created_by = isset($_SESSION['nama_user']) ? mysqli_real_escape_string($conn, $_SESSION['nama_user']) : 'System';
-        $berhasil = 0; $gagal = 0; $updated = 0; $updated_id = 0;
+        unset($_SESSION['import_pegawai_preview_rows'], $_SESSION['import_pegawai_preview_token'], $_SESSION['import_pegawai_preview_created_at']);
+        session_write_close();
+        $berhasil = 0; $gagal = 0; $updated = 0; $updated_id = 0; $skip = 0;
         $pesan_error_db = ""; 
+        $error_details = array();
 
         foreach ($data as $row) {
             $id_peg_raw = isset($row[0]) ? trim($row[0]) : '';
@@ -254,8 +342,17 @@ try {
                     tmt_kerja = $sql_tmt_kerja, tgl_pensiun = $sql_tgl_pensiun, bpjstk = $sql_bpjstk, bpjskes = $sql_bpjskes
                     WHERE id_peg = '$v_id_peg'";
 
-                if (mysqli_query($conn, $query_update)) $updated++; 
-                else { $gagal++; $pesan_error_db = mysqli_error($conn); }
+                if (mysqli_query($conn, $query_update)) {
+                    if (mysqli_affected_rows($conn) > 0) {
+                        $updated++;
+                    } else {
+                        $skip++;
+                    }
+                } else {
+                    $gagal++;
+                    $pesan_error_db = mysqli_error($conn);
+                    $error_details[] = "ID $v_id_peg: " . $pesan_error_db;
+                }
 
             } else {
                 // 2. CEK APAKAH ADA NIP & NAMA YANG SAMA (GANTI ID)
@@ -264,21 +361,31 @@ try {
                 if (mysqli_num_rows($cekMatch) > 0) {
                     $rowMatch = mysqli_fetch_assoc($cekMatch);
                     $old_id = $rowMatch['id_peg'];
+                    mysqli_begin_transaction($conn);
+                    mysqli_query($conn, "SET FOREIGN_KEY_CHECKS=0");
 
                     $query_update_id = "UPDATE tb_pegawai SET 
                         id_peg = '$v_id_peg',
-                        nip = $sql_nip, tempat_lhr = $sql_tempat_lhr, tgl_lhr = $sql_tgl_lhr,
+                        nip = $sql_nip, nama = $sql_nama, tempat_lhr = $sql_tempat_lhr, tgl_lhr = $sql_tgl_lhr,
                         agama = $sql_agama, jk = $sql_jk, gol_darah = $sql_gol_darah, status_nikah = $sql_status_nikah, 
                         status_kepeg = $sql_status_kepeg, alamat = $sql_alamat, telp = $sql_telp, email = $sql_email 
                         $sql_foto_update, 
                         tmt_kerja = $sql_tmt_kerja, tgl_pensiun = $sql_tgl_pensiun, bpjstk = $sql_bpjstk, bpjskes = $sql_bpjskes
                         WHERE id_peg = '$old_id'";
 
-                    if (mysqli_query($conn, $query_update_id)) { 
-                        // SINKRONISASI KE TABLE USER AGAR TIDAK PUTUS LOGINNYA
-                        mysqli_query($conn, "UPDATE tb_user SET id_user = '$v_id_peg', id_pegawai = '$v_id_peg' WHERE id_pegawai = '$old_id'");
-                        $updated_id++; 
-                    } else { $gagal++; $pesan_error_db = mysqli_error($conn); }
+                    $ok_update_id = mysqli_query($conn, $query_update_id);
+                    if ($ok_update_id) {
+                        sync_related_employee_id($conn, $old_id, $v_id_peg);
+                        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS=1");
+                        mysqli_commit($conn);
+                        $updated_id++;
+                    } else {
+                        $pesan_error_db = mysqli_error($conn);
+                        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS=1");
+                        mysqli_rollback($conn);
+                        $gagal++;
+                        $error_details[] = "Ganti ID $old_id -> $v_id_peg: " . $pesan_error_db;
+                    }
 
                 } else {
                     // 3. INSERT BARU
@@ -300,19 +407,32 @@ try {
                                   VALUES ('$v_id_peg', '$pass_def', $sql_nama, '$v_id_peg', 'User', 'Y')";
                         mysqli_query($conn, $qUser);
                         $berhasil++; 
-                    } else { $gagal++; $pesan_error_db = mysqli_error($conn); }
+                    } else {
+                        $gagal++;
+                        $pesan_error_db = mysqli_error($conn);
+                        $error_details[] = "Insert ID $v_id_peg: " . $pesan_error_db;
+                    }
                 }
             }
+        }
+
+        $message = "<b>Import Selesai!</b><br>
+                    <span class='text-success'>Baru: $berhasil</span> | 
+                    <span class='text-primary'>Update: $updated</span> | 
+                    <span class='text-warning'>Ganti ID: $updated_id</span> | 
+                    <span class='text-info'>Sesuai: $skip</span> | 
+                    <span class='text-danger'>Gagal: $gagal</span>";
+
+        if ($gagal > 0 && !empty($error_details)) {
+            $message .= "<br><small class='text-muted'>"
+                . htmlspecialchars(implode(' | ', array_slice($error_details, 0, 3)), ENT_QUOTES, 'UTF-8')
+                . "</small>";
         }
 
         ob_clean();
         echo json_encode([
             'status' => 'success', 
-            'message' => "<b>Import Selesai!</b><br>
-                          <span class='text-success'>Baru: $berhasil</span> | 
-                          <span class='text-primary'>Update: $updated</span> | 
-                          <span class='text-warning'>Ganti ID: $updated_id</span> | 
-                          <span class='text-danger'>Gagal: $gagal</span>"
+            'message' => $message
         ]);
         exit;
     }

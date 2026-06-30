@@ -21,6 +21,46 @@ ob_start();
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+function import_token_equals($known, $user) {
+    if (function_exists('hash_equals')) {
+        return hash_equals($known, $user);
+    }
+
+    $known = (string) $known;
+    $user = (string) $user;
+
+    if (strlen($known) !== strlen($user)) {
+        return false;
+    }
+
+    $result = 0;
+    $length = strlen($known);
+    for ($i = 0; $i < $length; $i++) {
+        $result |= ord($known[$i]) ^ ord($user[$i]);
+    }
+
+    return $result === 0;
+}
+
+function anak_preview_token() {
+    if (function_exists('random_bytes')) {
+        return bin2hex(random_bytes(16));
+    }
+
+    if (function_exists('openssl_random_pseudo_bytes')) {
+        $bytes = openssl_random_pseudo_bytes(16);
+        if ($bytes !== false) {
+            return bin2hex($bytes);
+        }
+    }
+
+    return sha1(uniqid('anak_preview_', true) . mt_rand());
+}
+
 // --- HELPER SQL VALUE (PENTING BUAT LINUX) ---
 function getSqlVal($conn, $val, $type = 'string') {
     if ($val === '' || $val === null || $val === false || $val === 'NULL') {
@@ -127,12 +167,19 @@ try {
         
         if ($count > $limit) $html .= '<div class="alert alert-info py-2 mt-2"><i class="fas fa-info-circle"></i> Menampilkan 10 dari '.$count.' data.</div>';
         
+        $preview_token = anak_preview_token();
+        $_SESSION['import_anak_preview_rows'] = $json_rows;
+        $_SESSION['import_anak_preview_token'] = $preview_token;
+        $_SESSION['import_anak_preview_created_at'] = time();
+        session_write_close();
+
         $html .= '<hr><div class="text-right">';
         $html .= '<button type="button" class="btn btn-success" id="btnSimpanAnak"><i class="fas fa-save"></i> Proses Simpan & Update</button>';
         $html .= '</div>';
         
         $json_str = json_encode($json_rows);
         $html .= '<textarea id="json_data_anak" style="display:none;">' . $json_str . '</textarea>';
+        $html .= '<input type="hidden" id="import_anak_preview_token" value="' . htmlspecialchars($preview_token, ENT_QUOTES, 'UTF-8') . '">';
 
         ob_clean();
         echo json_encode(['status' => 'success', 'html' => $html]);
@@ -141,9 +188,25 @@ try {
 
     // --- 2. PROSES SAVE (INSERT OR UPDATE - LINUX SAFE) ---
     elseif ($action === 'save') {
-        if (!isset($_POST['data_anak'])) throw new Exception("Data tidak diterima");
-        $data = json_decode($_POST['data_anak'], true);
-        if (!$data) throw new Exception("Gagal decode JSON data");
+        $data = array();
+        $posted_token = isset($_POST['preview_token']) ? trim($_POST['preview_token']) : '';
+
+        if (
+            $posted_token !== '' &&
+            isset($_SESSION['import_anak_preview_token']) &&
+            import_token_equals($_SESSION['import_anak_preview_token'], $posted_token) &&
+            isset($_SESSION['import_anak_preview_rows']) &&
+            is_array($_SESSION['import_anak_preview_rows'])
+        ) {
+            $data = $_SESSION['import_anak_preview_rows'];
+        } elseif (isset($_POST['data_anak'])) {
+            $data = json_decode($_POST['data_anak'], true);
+        }
+
+        if (!$data || !is_array($data)) throw new Exception("Data tidak diterima atau sesi preview sudah berakhir");
+
+        unset($_SESSION['import_anak_preview_rows'], $_SESSION['import_anak_preview_token'], $_SESSION['import_anak_preview_created_at']);
+        session_write_close();
         
         $total_insert = 0;
         $total_update = 0;

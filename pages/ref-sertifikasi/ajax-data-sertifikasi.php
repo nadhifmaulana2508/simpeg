@@ -56,7 +56,19 @@ $f_kantor  = isset($_GET['kantor']) ? esc($_GET['kantor']) : '';
 
 $baseQuery = " FROM tb_sertifikasi s 
                JOIN tb_pegawai p ON s.id_peg = p.id_peg 
-               LEFT JOIN tb_jabatan j ON p.id_peg = j.id_peg AND j.status_jab = 'Aktif'
+               LEFT JOIN tb_jabatan j ON j.id_jab = (
+                    SELECT j2.id_jab
+                    FROM tb_jabatan j2
+                    WHERE j2.id_peg = s.id_peg
+                      AND j2.tmt_jabatan <= COALESCE(NULLIF(s.tgl_sertifikat, '0000-00-00'), CURDATE())
+                      AND (
+                            j2.sampai_tgl = '0000-00-00'
+                            OR j2.sampai_tgl IS NULL
+                            OR j2.sampai_tgl >= COALESCE(NULLIF(s.tgl_sertifikat, '0000-00-00'), CURDATE())
+                          )
+                    ORDER BY j2.tmt_jabatan DESC, j2.id_jab DESC
+                    LIMIT 1
+               )
                LEFT JOIN tb_kantor k ON j.unit_kerja = k.kode_kantor_detail ";
 
 $where = " WHERE 1=1 ";
@@ -96,7 +108,7 @@ if($qCount){
 }
 
 // --- 7. AMBIL DATA UTAMA ---
-$sql = "SELECT s.*, p.nama AS nama_peg, p.nip, k.nama_kantor
+$sql = "SELECT s.*, p.nama AS nama_peg, p.id_peg, j.jabatan, k.kode_cabang
         $baseQuery $where
         ORDER BY s.tgl_sertifikat DESC
         LIMIT $start, $len"; // $start dan $len sudah di-cast (int) jadi aman
@@ -112,7 +124,7 @@ if($q){
 
         // Nama & NIP (Gunakan h() agar script tidak jalan)
         $nama_html = '<div class="font-weight-bold text-dark">'.h($r['nama_peg']).'</div>
-                      <small class="text-muted">'.h($r['nip']).'</small>';
+                      <small class="text-muted">'.h($r['id_peg']).'</small>';
 
         // Sertifikasi & No Sertifikat
         $sertif_html = '<div class="font-weight-bold text-primary">'.h($r['sertifikasi']).'</div>';
@@ -154,7 +166,7 @@ if($q){
             'nama_peg'      => $nama_html,
             'sertifikasi'   => $sertif_html,
             'penyelenggara' => $lokasi_html,
-            'unit_kerja'    => h($r['nama_kantor']) ?: '-',
+            'unit_kerja'    => '<div class="font-weight-bold text-dark">'.(h($r['kode_cabang']) ?: '-').'</div><small class="text-muted">'.(h($r['jabatan']) ?: '-').'</small>',
             'status'        => $status_html,
             'aksi'          => $aksi_html
         );

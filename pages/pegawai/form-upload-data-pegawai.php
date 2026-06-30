@@ -38,7 +38,7 @@
                     </div>
                 </div>
 
-                <form id="uploadForm" enctype="multipart/form-data">
+                <form id="uploadForm" enctype="multipart/form-data" data-no-loading="true">
                     <input type="hidden" name="csrf_token" value="<?php echo isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : ''; ?>">
 
                     <div class="mb-3">
@@ -81,6 +81,12 @@
 // Cek apakah SweetAlert berhasil diload
 if (typeof Swal === 'undefined') {
     alert("Error: File plugins/sweetalert2/sweetalert2.all.min.js tidak ditemukan. Aplikasi mungkin tidak berjalan optimal.");
+}
+
+function hideGlobalSimpegLoader() {
+    if (window.SimpegUI && typeof window.SimpegUI.hideLoader === 'function') {
+        window.SimpegUI.hideLoader();
+    }
 }
 
 const dropZone = document.getElementById('dropZone');
@@ -129,6 +135,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     fetch('pages/pegawai/upload-data-pegawai.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
         if(typeof Swal !== 'undefined') Swal.close();
         
         if (res.status === 'success') {
@@ -140,6 +147,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
             if(typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error'); else alert(res.message);
         }
     }).catch(err => { 
+        hideGlobalSimpegLoader();
         if(typeof Swal !== 'undefined') { Swal.close(); Swal.fire('Error', 'Terjadi kesalahan server.', 'error'); } 
         console.error(err);
     });
@@ -150,8 +158,9 @@ document.body.addEventListener('click', function(e) {
     if (e.target && (e.target.id == 'btnSimpanKolektif' || e.target.closest('#btnSimpanKolektif'))) {
         e.preventDefault();
         const textArea = document.getElementById('json_data_pegawai');
+        const tokenInput = document.getElementById('import_preview_token');
         
-        if(!textArea) { 
+        if(!textArea && !tokenInput) { 
             typeof Swal !== 'undefined' ? Swal.fire('Error', 'Data preview tidak ditemukan.', 'error') : alert('Data tidak ditemukan'); 
             return; 
         }
@@ -159,14 +168,19 @@ document.body.addEventListener('click', function(e) {
         const confirmAction = () => {
             const formData = new FormData();
             formData.append('action', 'save');
-            formData.append('data_pegawai', textArea.value);
-            // Append CSRF token manual jika perlu, atau ambil dari form hidden input jika ada di scope
+            if (tokenInput && tokenInput.value) {
+                formData.append('preview_token', tokenInput.value);
+            } else if (textArea) {
+                formData.append('data_pegawai', textArea.value);
+            }
 
             if(typeof Swal !== 'undefined') Swal.fire({title: 'Menyimpan Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
 
             fetch('pages/pegawai/upload-data-pegawai.php', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(res => {
+                hideGlobalSimpegLoader();
+                if(typeof Swal !== 'undefined') Swal.close();
                 if (res.status === 'success') {
                     if(typeof Swal !== 'undefined') {
                         Swal.fire('Selesai!', res.message, 'success').then(() => { window.location.href = "home-admin.php?page=form-view-data-pegawai"; });
@@ -178,7 +192,9 @@ document.body.addEventListener('click', function(e) {
                     if(typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error'); else alert(res.message);
                 }
             }).catch(err => { 
+                hideGlobalSimpegLoader();
                 if(typeof Swal !== 'undefined') { Swal.close(); Swal.fire('Error', 'Koneksi gagal.', 'error'); }
+                console.error(err);
             });
         };
 

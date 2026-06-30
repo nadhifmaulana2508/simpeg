@@ -41,7 +41,7 @@
                     </div>
                 </div>
 
-                <form id="uploadForm" enctype="multipart/form-data">
+                <form id="uploadForm" enctype="multipart/form-data" data-no-loading="true">
                     <div class="mb-3">
                         <div class="d-flex align-items-center mb-3">
                             <span class="step-badge">2</span>
@@ -77,6 +77,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+function hideGlobalSimpegLoader() {
+    if (window.SimpegUI && typeof window.SimpegUI.hideLoader === 'function') {
+        window.SimpegUI.hideLoader();
+    }
+}
+
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('file_excel');
 const filePreview = document.getElementById('filePreview');
@@ -107,6 +113,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     fetch('pages/ref-jabatan/upload-data-jabatan.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
         Swal.close();
         if (res.status === 'success') {
             document.getElementById('preview-area').innerHTML = res.html;
@@ -115,14 +122,19 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         } else {
             Swal.fire('Gagal', res.message, 'error');
         }
-    }).catch(err => { Swal.close(); Swal.fire('Error', 'Terjadi kesalahan server.', 'error'); });
+    }).catch(err => {
+        hideGlobalSimpegLoader();
+        Swal.close();
+        Swal.fire('Error', 'Terjadi kesalahan server.', 'error');
+    });
 });
 
 document.body.addEventListener('click', function(e) {
     if (e.target && (e.target.id == 'btnSimpanJabatan' || e.target.closest('#btnSimpanJabatan'))) {
         e.preventDefault();
         const textArea = document.getElementById('json_data_jabatan');
-        if(!textArea) { Swal.fire('Error', 'Data preview tidak ditemukan.', 'error'); return; }
+        const tokenInput = document.getElementById('import_jabatan_preview_token');
+        if(!textArea && !tokenInput) { Swal.fire('Error', 'Data preview tidak ditemukan.', 'error'); return; }
 
         Swal.fire({
             title: 'Simpan Data Jabatan?',
@@ -134,13 +146,19 @@ document.body.addEventListener('click', function(e) {
             if (result.isConfirmed) {
                 const formData = new FormData();
                 formData.append('action', 'save');
-                formData.append('data_jabatan', textArea.value); 
+                if (tokenInput && tokenInput.value) {
+                    formData.append('preview_token', tokenInput.value);
+                } else {
+                    formData.append('data_jabatan', textArea.value);
+                }
 
                 Swal.fire({title: 'Menyimpan Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
 
                 fetch('pages/ref-jabatan/upload-data-jabatan.php', { method: 'POST', body: formData })
                 .then(res => res.json())
                 .then(res => {
+                    hideGlobalSimpegLoader();
+                    Swal.close();
                     if (res.status === 'success') {
                         Swal.fire('Selesai!', res.message, 'success').then(() => { 
                             // Refresh atau redirect
@@ -149,7 +167,11 @@ document.body.addEventListener('click', function(e) {
                     } else {
                         Swal.fire('Gagal', res.message, 'error');
                     }
-                }).catch(err => { Swal.close(); Swal.fire('Error', 'Koneksi gagal.', 'error'); });
+                }).catch(err => {
+                    hideGlobalSimpegLoader();
+                    Swal.close();
+                    Swal.fire('Error', 'Koneksi gagal.', 'error');
+                });
             }
         });
     }

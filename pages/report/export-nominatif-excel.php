@@ -20,6 +20,7 @@ if (!isset($conn)) { @include_once __DIR__ . '/../../config/koneksi.php'; $conn 
 $unit_kerja   = isset($_GET['unit_kerja']) ? mysqli_real_escape_string($conn, $_GET['unit_kerja']) : '';
 $jabatan      = isset($_GET['jabatan']) ? mysqli_real_escape_string($conn, $_GET['jabatan']) : '';
 $status_kepeg = isset($_GET['status_kepeg']) ? mysqli_real_escape_string($conn, $_GET['status_kepeg']) : '';
+$search       = isset($_GET['search']) ? mysqli_real_escape_string($conn, trim($_GET['search'])) : '';
 
 // --- 2. CEK HAK AKSES (KEPALA - LOCK FILTER) ---
 session_start();
@@ -34,7 +35,23 @@ if ($hak_akses == 'kepala') {
 $sqlJoin = "FROM tb_pegawai p
             LEFT JOIN tb_jabatan j ON p.id_peg = j.id_peg AND j.status_jab = 'Aktif'
             LEFT JOIN tb_kantor k ON j.unit_kerja = k.kode_kantor_detail
-            LEFT JOIN tb_pendidikan s ON p.id_peg = s.id_peg AND s.status = 'Akhir'";
+            LEFT JOIN tb_pendidikan s ON s.id_pendidikan = (
+                SELECT s2.id_pendidikan
+                FROM tb_pendidikan s2
+                WHERE s2.id_peg = p.id_peg
+                ORDER BY
+                    CASE 
+                        WHEN s2.tgl_ijazah IS NULL OR s2.tgl_ijazah = '0000-00-00' THEN 1 
+                        ELSE 0 
+                    END ASC,
+                    s2.tgl_ijazah DESC,
+                    CASE
+                        WHEN s2.th_lulus IS NULL OR s2.th_lulus = '' OR s2.th_lulus = '0000' THEN 0
+                        ELSE CAST(s2.th_lulus AS UNSIGNED)
+                    END DESC,
+                    s2.id_pendidikan DESC
+                LIMIT 1
+            )";
 
 $where = "WHERE p.status_aktif = 1";
 
@@ -60,10 +77,13 @@ if ($jabatan != '') {
 if ($status_kepeg != '') { 
     $where .= " AND p.status_kepeg = '$status_kepeg'"; 
 }
+if ($search != '') {
+    $where .= " AND (p.nama LIKE '%$search%' OR p.id_peg LIKE '%$search%' OR j.jabatan LIKE '%$search%' OR k.nama_kantor LIKE '%$search%')";
+}
 
 // --- 4. QUERY DATA ---
 $query = "SELECT
-            p.id_peg, p.nama, p.nip, p.status_kepeg,
+            p.id_peg, p.nama, p.status_kepeg,
             j.jabatan, j.tmt_jabatan,
             k.nama_kantor AS nama_unit_kerja,
             s.nama_sekolah, s.jenjang, s.tgl_ijazah
@@ -80,7 +100,7 @@ $result = mysqli_query($conn, $query);
         <tr style="background-color: #f2f2f2;">
             <th style="padding: 10px;">No</th>
             <th style="padding: 10px;">Nama Pegawai</th>
-            <th style="padding: 10px;">NIP / NIK</th>
+            <th style="padding: 10px;">ID Pegawai</th>
             <th style="padding: 10px;">Jabatan</th>
             <th style="padding: 10px;">TMT Jabatan</th>
             <th style="padding: 10px;">Unit Kerja</th>
@@ -101,7 +121,7 @@ $result = mysqli_query($conn, $query);
         <tr>
             <td align="center"><?= $no++ ?></td>
             <td><?= htmlspecialchars($row['nama']) ?></td>
-            <td align="center" style="mso-number-format:'@'"><?= htmlspecialchars($row['nip']) ?></td>
+            <td align="center" style="mso-number-format:'@'"><?= htmlspecialchars($row['id_peg']) ?></td>
             <td><?= htmlspecialchars($row['jabatan'] ?: '-') ?></td>
             <td align="center" style="mso-number-format:'@'"><?= $tmt ?></td>
             <td><?= htmlspecialchars($row['nama_unit_kerja'] ?: '-') ?></td>

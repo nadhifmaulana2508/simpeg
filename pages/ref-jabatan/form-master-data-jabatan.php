@@ -12,6 +12,17 @@ if (!isset($conn)) { @include_once __DIR__ . '/../../config/koneksi.php'; $conn 
 function e($s){ return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 function postv($k,$d=''){ return isset($_POST[$k]) ? trim($_POST[$k]) : $d; }
 function clean($c,$s){ return mysqli_real_escape_string($c, trim($s)); }
+function form_jabatan_page_url($page, $params = array()) {
+    if (function_exists('page_url')) {
+        return page_url($page, $params);
+    }
+
+    $url = 'home-admin.php?page=' . rawurlencode($page);
+    if (!empty($params)) {
+        $url .= '&' . http_build_query($params);
+    }
+    return $url;
+}
 
 $today      = date('Y-m-d');
 $user_login = isset($_SESSION['id_user']) ? $_SESSION['id_user'] : 'system';
@@ -42,6 +53,12 @@ if (!$pegawai) {
     echo "<script>alert('Data tidak ditemukan!'); window.location='home-admin.php?page=form-view-data-jabatan';</script>";
     exit;
 }
+
+$listUrl = form_jabatan_page_url('form-view-data-jabatan');
+$detailUrl = form_jabatan_page_url('view-detail-data-pegawai', array('id_peg' => $uid));
+$selfUrl = form_jabatan_page_url('form-master-data-jabatan', array('uid' => $uid));
+$updateUrl = form_jabatan_page_url('form-master-data-jabatan', array('uid' => $uid, 'mode' => 'update'));
+$mutasiUrl = form_jabatan_page_url('form-master-data-jabatan', array('uid' => $uid, 'mode' => 'mutasi'));
 
 // --- 2. LOGIC MODE ---
 $mode = isset($_GET['mode']) ? $_GET['mode'] : ''; 
@@ -134,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   
   <style>
     .form-section { max-width: 850px; margin: 30px auto; }
-    .card { border-radius: 16px; border: none; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+    .card { border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
     .card-header { background: #fff; padding: 20px 25px; border-bottom: 1px solid #f0f0f0; }
     
     /* Menu Card Style */
@@ -144,18 +161,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         transition: all 0.2s; background: #fff; color: #333; text-decoration: none; 
     }
     .btn-menu:hover { 
-        border-color: #0d6efd; background: #f8fbff; transform: translateY(-3px); 
-        box-shadow: 0 10px 25px rgba(13, 110, 253, 0.1); 
+        border-color: #4f46e5; background: #f8fbff; transform: translateY(-3px); 
+        box-shadow: 0 10px 25px rgba(79, 70, 229, 0.10); 
     }
     .btn-menu .icon-box {
         width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
         margin-right: 20px; font-size: 1.5rem; float: left;
     }
-    .bg-soft-primary { background-color: #e0f2fe; color: #0284c7; }
+    .bg-soft-primary { background-color: #eef2ff; color: #4f46e5; }
     .bg-soft-warning { background-color: #fef3c7; color: #d97706; }
     
     .btn-menu h6 { margin: 5px 0 5px 0; font-weight: 800; font-size: 1.1rem; color: #1e293b; }
     .btn-menu p { margin: 0; font-size: 0.9rem; color: #64748b; line-height: 1.4; }
+    .form-control, .form-select, .select2-container .select2-selection--single {
+        min-height: 44px !important;
+        border-radius: 10px !important;
+        border-color: #d1d5db !important;
+        box-shadow: none !important;
+    }
+    .select2-container .select2-selection--single {
+        display: flex !important;
+        align-items: center !important;
+    }
+    .section-subtitle {
+        font-size: 0.86rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    .btn-primary-soft {
+        background: #4f46e5;
+        border-color: #4f46e5;
+        color: #fff;
+    }
+    .btn-primary-soft:hover {
+        background: #4338ca;
+        border-color: #4338ca;
+        color: #fff;
+    }
+    @media (max-width: 767.98px) {
+        .form-section { margin: 20px auto; }
+        .card-header,
+        .card-body { padding-left: 18px !important; padding-right: 18px !important; }
+        .btn-menu { padding: 18px; }
+    }
   </style>
   <script src="assets/js/core/jquery.3.2.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -165,8 +213,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container form-section">
 
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold text-dark mb-0">Manajemen Jabatan</h4>
-    <a href="home-admin.php?page=form-view-data-jabatan" class="btn btn-outline-secondary rounded-pill px-4">
+    <div>
+      <h4 class="fw-bold text-dark mb-0">Manajemen Jabatan</h4>
+      <div class="section-subtitle">Kelola koreksi data jabatan dan mutasi dengan tampilan yang konsisten.</div>
+    </div>
+    <a href="<?= e($listUrl) ?>" class="btn btn-outline-secondary rounded-pill px-4">
         <i class="fas fa-arrow-left me-2"></i> Kembali
     </a>
   </div>
@@ -196,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <?php if ($mode === '' && $jabAktif): ?>
       <div class="row g-4">
           <div class="col-md-6">
-              <a href="home-admin.php?page=form-master-data-jabatan&uid=<?= $uid ?>&mode=update" class="btn-menu">
+              <a href="<?= e($updateUrl) ?>" class="btn-menu">
                   <div class="icon-box bg-soft-primary"><i class="fas fa-edit"></i></div>
                   <div style="overflow: hidden;">
                       <h6>Update / Koreksi Data</h6>
@@ -205,7 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               </a>
           </div>
           <div class="col-md-6">
-              <a href="home-admin.php?page=form-master-data-jabatan&uid=<?= $uid ?>&mode=mutasi" class="btn-menu">
+              <a href="<?= e($mutasiUrl) ?>" class="btn-menu">
                   <div class="icon-box bg-soft-warning"><i class="fas fa-exchange-alt"></i></div>
                   <div style="overflow: hidden;">
                       <h6>Mutasi / Promosi</h6>
@@ -228,14 +279,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </h6>
             
             <?php if($jabAktif): ?>
-                <a href="home-admin.php?page=form-master-data-jabatan&uid=<?= $uid ?>" class="btn btn-sm btn-light border text-muted px-3">Ganti Aksi</a>
+                <a href="<?= e($selfUrl) ?>" class="btn btn-sm btn-light border text-muted px-3">Ganti Aksi</a>
             <?php endif; ?>
         </div>
         
         <div class="card-body p-4">
             
             <?php if ($status === 'sukses'): ?>
-                <script>Swal.fire({icon:'success',title:'Berhasil!',text:'Data berhasil disimpan.',timer:1500,showConfirmButton:false}).then(()=>{window.location='home-admin.php?page=view-detail-data-pegawai&id_peg=<?= $uid ?>'});</script>
+                <script>Swal.fire({icon:'success',title:'Berhasil!',text:'Data berhasil disimpan.',timer:1500,showConfirmButton:false}).then(()=>{window.location=<?= json_encode($detailUrl) ?>});</script>
             <?php elseif ($status === 'gagal'): ?>
                 <div class="alert alert-danger"><?= $msg_error ?></div>
             <?php endif; ?>
@@ -292,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="d-grid">
-                    <button type="submit" class="btn btn-primary fw-bold py-2 shadow-sm">
+                    <button type="submit" class="btn btn-primary-soft fw-bold py-2 shadow-sm">
                         <i class="fas fa-save me-2"></i> SIMPAN DATA
                     </button>
                 </div>

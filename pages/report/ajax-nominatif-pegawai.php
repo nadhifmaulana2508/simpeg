@@ -31,7 +31,23 @@ if ($hak_akses == 'kepala') { $unit_kerja = $kode_kantor_user; }
 $sqlJoin = "FROM tb_pegawai p
             LEFT JOIN tb_jabatan j ON p.id_peg = j.id_peg AND j.status_jab = 'Aktif'
             LEFT JOIN tb_kantor k ON j.unit_kerja = k.kode_kantor_detail
-            LEFT JOIN tb_pendidikan s ON p.id_peg = s.id_peg AND s.status = 'Akhir'";
+            LEFT JOIN tb_pendidikan s ON s.id_pendidikan = (
+                SELECT s2.id_pendidikan
+                FROM tb_pendidikan s2
+                WHERE s2.id_peg = p.id_peg
+                ORDER BY
+                    CASE 
+                        WHEN s2.tgl_ijazah IS NULL OR s2.tgl_ijazah = '0000-00-00' THEN 1 
+                        ELSE 0 
+                    END ASC,
+                    s2.tgl_ijazah DESC,
+                    CASE
+                        WHEN s2.th_lulus IS NULL OR s2.th_lulus = '' OR s2.th_lulus = '0000' THEN 0
+                        ELSE CAST(s2.th_lulus AS UNSIGNED)
+                    END DESC,
+                    s2.id_pendidikan DESC
+                LIMIT 1
+            )";
 
 $where = "WHERE p.status_aktif = 1";
 
@@ -74,24 +90,31 @@ if($q) {
     while ($row = mysqli_fetch_assoc($q)) {
         // Badge Status (Logic diperbaiki biar nangkep 'Pegawai Tetap' & 'Tetap')
         $st = strtolower($row['status_kepeg']);
-        $cls = 'badge-secondary';
-        if(strpos($st,'tetap')!==false) $cls='badge-primary';
-        elseif(strpos($st,'calon')!==false || strpos($st,'capeg')!==false) $cls='badge-info';
-        elseif(strpos($st,'kontrak')!==false || strpos($st,'pkwt')!==false) $cls='badge-warning';
-        elseif(strpos($st,'thl')!==false || strpos($st,'outsource')!==false) $cls='badge-dark';
-        
-        $status = "<span class='badge $cls px-3 py-2 rounded-pill'>".h($row['status_kepeg'])."</span>";
+        $statusClass = 'status-default';
+        if (strpos($st, 'tetap') !== false) {
+            $statusClass = 'status-tetap';
+        } elseif (strpos($st, 'calon') !== false || strpos($st, 'capeg') !== false) {
+            $statusClass = 'status-calon';
+        } elseif (strpos($st, 'kontrak') !== false || strpos($st, 'pkwt') !== false) {
+            $statusClass = 'status-kontrak';
+        } elseif (strpos($st, 'thl') !== false || strpos($st, 'outsource') !== false) {
+            $statusClass = 'status-thl';
+        }
+
+        $status = "<span class='badge-pill-status " . $statusClass . "'>" . h($row['status_kepeg']) . "</span>";
         
         // Data Formatting
-        $pend = empty($row['jenjang']) ? '-' : "<b>".h($row['jenjang'])."</b><br><small class='text-muted'>".h($row['nama_sekolah'])."</small>";
+        $pend = empty($row['jenjang'])
+            ? "<span class='pendidikan-sekolah'>Belum ada data pendidikan</span>"
+            : "<span class='pendidikan-jenjang'>" . h($row['jenjang']) . "</span><span class='pendidikan-sekolah'>" . h($row['nama_sekolah']) . "</span>";
         $tmt = ($row['tmt_jabatan'] && $row['tmt_jabatan']!='0000-00-00') ? date('d-m-Y', strtotime($row['tmt_jabatan'])) : '-';
 
         $data[] = [
             "no" => $no++,
-            "nama" => "<div style='font-weight:700; color:#334155;'>".h($row['nama'])."</div>",
-            "nip" => "<div class='text-muted small font-monospace'>".h($row['id_peg'])."</div>",
-            "jabatan" => h($row['jabatan']?:'-'),
-            "unit_kerja" => "<span class='text-primary font-weight-bold'>".h($row['nama_kantor']?:'-')."</span>",
+            "nama" => "<div class='pegawai-name'>" . h($row['nama']) . "</div>",
+            "nip" => "<div class='pegawai-id'>" . h($row['id_peg']) . "</div>",
+            "jabatan" => "<span class='jabatan-chip'>" . h($row['jabatan'] ?: '-') . "</span>",
+            "unit_kerja" => "<span class='kantor-name'>" . h($row['nama_kantor'] ?: '-') . "</span>",
             "status" => $status,
             "tmt" => $tmt,
             "pendidikan" => $pend

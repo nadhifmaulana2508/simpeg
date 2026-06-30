@@ -28,20 +28,23 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
 
 <style>
     .content-wrapper { background-color: #f8f9fa; }
-    .card-clean { border: 1px solid #e3e6f0; border-radius: 12px; box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.05); background: #fff; }
+    .card-clean { border: 1px solid #e3e6f0; border-radius: 16px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06); background: #fff; overflow: hidden; }
     .card-header-clean { background-color: #fff; border-bottom: 1px solid #f1f3f9; padding: 20px 25px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
     .title-text { font-size: 1.25rem; font-weight: 700; color: #2e343a; margin: 0; }
     .subtitle-text { font-size: 0.85rem; color: #858796; margin-top: 4px; display: block; }
     
     /* Tombol Custom */
-    .btn-custom-home { background: #fff; border: 1px solid #d1d3e2; color: #5a5c69; padding: 7px 12px; border-radius: 8px; }
-    .btn-custom-import { background-color: #1cc88a; border: none; color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
-    .btn-custom-add { background-color: #4e73df; border: none; color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+    .header-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
+    .btn-custom-import { background-color: #1cc88a; border: none; color: white; padding: 9px 16px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; }
+    .btn-custom-export { background-color: #0f766e; border: none; color: white; padding: 9px 16px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; }
+    .btn-custom-add { background-color: #4e73df; border: none; color: white; padding: 9px 16px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; }
     .btn-custom-import:hover { background-color: #17a673; color: white; }
+    .btn-custom-export:hover { background-color: #115e59; color: white; }
     .btn-custom-add:hover { background-color: #2e59d9; color: white; }
     
     .label-filter { font-size: 0.7rem; font-weight: 700; color: #b7b9cc; text-transform: uppercase; margin-bottom: 5px; display: block; letter-spacing: 0.5px; }
     .form-control-clean { border-radius: 6px; height: 38px; border: 1px solid #d1d3e2; font-size: 0.85rem; color: #6e707e; }
+    .filters-panel { padding: 18px; border: 1px solid #eef2f7; border-radius: 14px; background: #fbfdff; margin-bottom: 16px; }
     
     /* Table Styling */
     table.dataTable thead th { background-color: #fff; color: #5a5c69; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid #e3e6f0 !important; padding: 15px !important; }
@@ -49,11 +52,21 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
     
     /* DataTables Controls Hidden Default Search */
     .dataTables_wrapper .dataTables_filter { display: none; } 
+    .table-responsive { overflow-x: auto; }
+    #customSearch { min-width: 100%; }
     
     @media (max-width: 768px) {
-        .card-header-clean { padding: 15px; flex-direction: column; align-items: flex-start; }
-        .header-actions { width: 100%; margin-top: 15px; display: flex; gap: 8px; }
-        .btn-custom-import, .btn-custom-add { flex: 1; text-align: center; font-size: 0.8rem; }
+        .content.pt-4 { padding-top: 1rem !important; }
+        .content.px-3 { padding-left: 0.85rem !important; padding-right: 0.85rem !important; }
+        .card-header-clean { padding: 16px; flex-direction: column; align-items: flex-start; }
+        .card-body { padding: 14px; }
+        .header-actions { width: 100%; margin-top: 4px; display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .btn-custom-import, .btn-custom-export, .btn-custom-add { width: 100%; text-align: center; font-size: 0.82rem; }
+        .filters-panel { padding: 14px; }
+        .row.mb-3.align-items-end > [class*='col-'] { margin-bottom: 10px; }
+        .title-text { font-size: 1.1rem; }
+        .subtitle-text { font-size: 0.8rem; }
+        table.dataTable thead th, table.dataTable tbody td { padding: 12px !important; }
     }
 </style>
 
@@ -70,8 +83,8 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
             <div class="header-actions">
                 
                 <?php if($is_admin): ?>
-                <a href="home-admin.php" class="btn btn-custom-home shadow-sm" title="Dashboard"><i class="fa fa-home"></i></a>
                 <a href="home-admin.php?page=form-import-data-diklat" class="btn btn-custom-import shadow-sm"><i class="fas fa-file-excel mr-1"></i> Import</a>
+                <a href="pages/ref-diklat/export-data-diklat.php?type=excel" id="btnExportDiklat" class="btn btn-custom-export shadow-sm" target="_blank"><i class="fas fa-download mr-1"></i> Download Excel</a>
                 <a href="home-admin.php?page=form-diklat" class="btn btn-custom-add shadow-sm"><i class="fas fa-plus mr-1"></i> Tambah Data</a>
                 <?php endif; ?>
                 
@@ -79,7 +92,7 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
         </div>
 
         <div class="card-body">
-            <div class="row mb-3 align-items-end">
+            <div class="row align-items-end filters-panel">
                 <div class="col-6 col-md-2 mb-2">
                     <span class="label-filter">Tahun</span>
                     <select id="filter_tahun" class="form-control form-control-clean select2bs4">
@@ -122,7 +135,7 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
                             <th>Nama Pegawai</th>
                             <th>Jenis Diklat</th>
                             <th>Penyelenggara</th>
-                            <th>Unit Kerja</th>
+                            <th>Kode Cabang / Jabatan</th>
                             <th>Tahun</th>
                             
                             <?php if($is_admin): ?>
@@ -183,6 +196,29 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
 $(document).ready(function() {
     $('.select2bs4').select2({ theme: 'bootstrap4', width: '100%' });
 
+    function getSelectedKantor() {
+        var kantorVal = $('#filter_kantor').val();
+        if(!kantorVal && $('#hidden_kantor').length) kantorVal = $('#hidden_kantor').val();
+        return kantorVal || '';
+    }
+
+    function updateExportLink() {
+        var params = new URLSearchParams();
+        params.set('type', 'excel');
+
+        var tahun = $('#filter_tahun').val();
+        var diklat = $('#filter_diklat').val();
+        var kantor = getSelectedKantor();
+        var search = $('#customSearch').val();
+
+        if (tahun) params.set('tahun', tahun);
+        if (diklat) params.set('diklat', diklat);
+        if (kantor) params.set('kantor', kantor);
+        if (search) params.set('search', search);
+
+        $('#btnExportDiklat').attr('href', 'pages/ref-diklat/export-data-diklat.php?' + params.toString());
+    }
+
     var table = $('#tabelDiklatAjax').DataTable({
         "processing": true,
         "serverSide": true,
@@ -193,9 +229,7 @@ $(document).ready(function() {
             "data": function (d) {
                 d.tahun  = $('#filter_tahun').val();
                 d.diklat = $('#filter_diklat').val();
-                var kantorVal = $('#filter_kantor').val();
-                if(!kantorVal && $('#hidden_kantor').length) kantorVal = $('#hidden_kantor').val();
-                d.kantor = kantorVal;
+                d.kantor = getSelectedKantor();
             }
         },
         "columns": [
@@ -222,10 +256,16 @@ $(document).ready(function() {
     });
 
     // Custom Search
-    $('#customSearch').on('keyup', function() { table.search(this.value).draw(); });
+    $('#customSearch').on('keyup', function() { 
+        table.search(this.value).draw();
+        updateExportLink();
+    });
     
     // Auto Filter Change
-    $('#filter_diklat, #filter_kantor').change(function(){ table.ajax.reload(); });
+    $('#filter_diklat, #filter_kantor').change(function(){ 
+        table.ajax.reload();
+        updateExportLink();
+    });
 
     // Dinamis Tahun -> Dropdown Diklat
     $('#filter_tahun').change(function(){
@@ -238,9 +278,12 @@ $(document).ready(function() {
             success: function(response){
                 $('#filter_diklat').html(response).prop('disabled', false);
                 table.ajax.reload();
+                updateExportLink();
             }
         });
     });
+
+    updateExportLink();
 
     // --- LOGIC HAPUS (HANYA AKTIF JIKA ADMIN) ---
     <?php if($is_admin): ?>

@@ -46,7 +46,7 @@ include "komponen/header.php";
                     </div>
                 </div>
 
-                <form id="uploadForm" enctype="multipart/form-data">
+                <form id="uploadForm" enctype="multipart/form-data" data-no-loading="true">
                     <div class="mb-3">
                         <div class="d-flex align-items-center mb-3">
                             <span class="step-badge">2</span>
@@ -82,6 +82,12 @@ include "komponen/header.php";
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+function hideGlobalSimpegLoader() {
+    if (window.SimpegUI && typeof window.SimpegUI.hideLoader === 'function') {
+        window.SimpegUI.hideLoader();
+    }
+}
+
 // UI Logic
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('file_excel');
@@ -114,6 +120,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     fetch('pages/ref-keluarga/upload-data-anak.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
         Swal.close();
         if (res.status === 'success') {
             document.getElementById('preview-area').innerHTML = res.html;
@@ -122,7 +129,11 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         } else {
             Swal.fire('Gagal', res.message, 'error');
         }
-    }).catch(err => Swal.fire('Error', 'Server Error', 'error'));
+    }).catch(err => {
+        hideGlobalSimpegLoader();
+        Swal.close();
+        Swal.fire('Error', 'Server Error', 'error');
+    });
 });
 
 // SIMPAN
@@ -130,8 +141,9 @@ document.body.addEventListener('click', function(e) {
     if (e.target && (e.target.id == 'btnSimpanAnak' || e.target.closest('#btnSimpanAnak'))) {
         e.preventDefault();
         const textArea = document.getElementById('json_data_anak');
+        const tokenInput = document.getElementById('import_anak_preview_token');
         
-        if(!textArea) { Swal.fire('Error', 'Data hilang. Upload ulang.', 'error'); return; }
+        if(!textArea && !tokenInput) { Swal.fire('Error', 'Data hilang. Upload ulang.', 'error'); return; }
 
         Swal.fire({
             title: 'Simpan Data Anak?',
@@ -143,22 +155,28 @@ document.body.addEventListener('click', function(e) {
             confirmButtonText: 'Ya, Simpan!'
         }).then((result) => {
             if (result.isConfirmed) {
-                simpanKeDatabase(textArea.value);
+                simpanKeDatabase(textArea ? textArea.value : '', tokenInput ? tokenInput.value : '');
             }
         });
     }
 });
 
-function simpanKeDatabase(jsonData) {
+function simpanKeDatabase(jsonData, previewToken) {
     const formData = new FormData();
     formData.append('action', 'save');
-    formData.append('data_anak', jsonData); 
+    if (previewToken) {
+        formData.append('preview_token', previewToken);
+    } else {
+        formData.append('data_anak', jsonData);
+    }
 
     Swal.fire({title: 'Menyimpan...', didOpen: () => Swal.showLoading()});
 
     fetch('pages/ref-keluarga/upload-data-anak.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
+        Swal.close();
         if (res.status === 'success') {
             Swal.fire('Sukses!', res.message, 'success').then(() => {
                 window.location.href = "home-admin.php?page=form-view-data-anak"; 
@@ -166,6 +184,10 @@ function simpanKeDatabase(jsonData) {
         } else {
             Swal.fire('Gagal', res.message, 'error');
         }
-    }).catch(err => Swal.fire('Error', 'Koneksi Gagal', 'error'));
+    }).catch(err => {
+        hideGlobalSimpegLoader();
+        Swal.close();
+        Swal.fire('Error', 'Koneksi Gagal', 'error');
+    });
 }
 </script>

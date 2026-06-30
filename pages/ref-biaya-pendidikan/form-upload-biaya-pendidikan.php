@@ -30,7 +30,7 @@
                     </div>
                 </div>
 
-                <form id="uploadForm" enctype="multipart/form-data">
+                <form id="uploadForm" enctype="multipart/form-data" data-no-loading="true">
                     <input type="hidden" name="csrf_token" value="<?php echo isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : ''; ?>">
 
                     <div class="mb-3">
@@ -69,6 +69,12 @@
 <script src="plugins/sweetalert2/sweetalert2.all.min.js"></script>
 
 <script>
+function hideGlobalSimpegLoader() {
+    if (window.SimpegUI && typeof window.SimpegUI.hideLoader === 'function') {
+        window.SimpegUI.hideLoader();
+    }
+}
+
 // Validasi SweetAlert
 if (typeof Swal === 'undefined') {
     alert("Error: File plugins/sweetalert2/sweetalert2.all.min.js tidak ditemukan.");
@@ -115,6 +121,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     fetch('pages/ref-biaya-pendidikan/upload-data-biaya-pendidikan.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
         if(typeof Swal !== 'undefined') Swal.close();
         
         if (res.status === 'success') {
@@ -125,6 +132,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
             if(typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error'); else alert(res.message);
         }
     }).catch(err => { 
+        hideGlobalSimpegLoader();
         if(typeof Swal !== 'undefined') { Swal.close(); Swal.fire('Error', 'Terjadi kesalahan server.', 'error'); } 
         console.error(err);
     });
@@ -138,8 +146,9 @@ document.body.addEventListener('click', function(e) {
         
         // ID Textarea JSON harus 'json_data_biaya' (sesuaikan nanti di backend PHP)
         const textArea = document.getElementById('json_data_biaya');
+        const tokenInput = document.getElementById('import_biaya_preview_token');
         
-        if(!textArea) { 
+        if(!textArea && !tokenInput) { 
             typeof Swal !== 'undefined' ? Swal.fire('Error', 'Data preview tidak ditemukan.', 'error') : alert('Data tidak ditemukan'); 
             return; 
         }
@@ -147,7 +156,11 @@ document.body.addEventListener('click', function(e) {
         const confirmAction = () => {
             const formData = new FormData();
             formData.append('action', 'save');
-            formData.append('data_biaya', textArea.value); // Kirim data JSON
+            if (tokenInput && tokenInput.value) {
+                formData.append('preview_token', tokenInput.value);
+            } else {
+                formData.append('data_biaya', textArea.value);
+            }
 
             if(typeof Swal !== 'undefined') Swal.fire({title: 'Menyimpan Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
 
@@ -155,6 +168,8 @@ document.body.addEventListener('click', function(e) {
             fetch('pages/ref-biaya-pendidikan/upload-data-biaya-pendidikan.php', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(res => {
+                hideGlobalSimpegLoader();
+                if(typeof Swal !== 'undefined') Swal.close();
                 if (res.status === 'success') {
                     // Redirect setelah sukses
                     const redirectUrl = "home-admin.php?page=view-data-biaya-pendidikan";
@@ -168,6 +183,7 @@ document.body.addEventListener('click', function(e) {
                     if(typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error'); else alert(res.message);
                 }
             }).catch(err => { 
+                hideGlobalSimpegLoader();
                 if(typeof Swal !== 'undefined') { Swal.close(); Swal.fire('Error', 'Koneksi gagal.', 'error'); }
             });
         };

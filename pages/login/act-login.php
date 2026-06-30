@@ -201,7 +201,7 @@ if ($op == "in") {
             Swal.fire({
                 icon: 'error',
                 title: 'Login Gagal',
-                text: 'Username/ID Pegawai atau Password salah!',
+                text: 'Kredensial login tidak valid. Gunakan akun milik Anda sendiri dan jangan berbagi password.',
                 confirmButtonText: 'Coba Lagi',
                 confirmButtonColor: '#3085d6'
             }).then(() => {

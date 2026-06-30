@@ -24,19 +24,19 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
     }
     .user-card {
         border: 1px solid rgba(217, 229, 220, 0.95) !important;
-        border-radius: 14px !important;
-        background: rgba(255,255,255,0.94) !important;
-        box-shadow: 0 12px 30px rgba(15, 35, 26, 0.06) !important;
+        border-radius: 16px !important;
+        background: #fff !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
         overflow: hidden;
     }
     .user-card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 0.8rem;
-        padding: 0.72rem 0.9rem;
+        gap: 0.9rem;
+        padding: 1rem 1.1rem;
         border-bottom: 1px solid rgba(217, 229, 220, 0.95);
-        background: linear-gradient(180deg, rgba(246,250,247,0.95), rgba(255,255,255,0.95));
+        background: #fff;
     }
     .user-title-wrap {
         display: flex;
@@ -45,39 +45,39 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         min-width: 0;
     }
     .user-title-icon {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border-radius: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #dff5f2;
-        color: #0f766e;
+        background: #eff6ff;
+        color: #4f46e5;
         flex: 0 0 auto;
     }
     .user-title {
         margin: 0;
-        font-size: 1rem;
-        font-weight: 800;
-        color: #1e2b24;
+        font-size: 1.08rem;
+        font-weight: 700;
+        color: #111827;
         line-height: 1.2;
     }
     .user-subtitle {
-        margin: 0.08rem 0 0;
-        color: #5d6d64;
-        font-size: 0.76rem;
+        margin: 0.18rem 0 0;
+        color: #6b7280;
+        font-size: 0.84rem;
     }
     .btn-user-primary {
         border: 0 !important;
-        border-radius: 12px !important;
-        padding: 0.5rem 0.78rem !important;
-        background: #0f766e !important;
+        border-radius: 10px !important;
+        padding: 0.6rem 0.95rem !important;
+        background: #4f46e5 !important;
         color: #fff !important;
-        font-weight: 800;
-        box-shadow: 0 8px 18px rgba(15, 118, 110, 0.14);
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(79, 70, 229, 0.16);
     }
     .btn-user-primary:hover {
-        background: #0b5c56 !important;
+        background: #4338ca !important;
         color: #fff !important;
         transform: translateY(-1px);
     }
@@ -87,9 +87,9 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 0.58rem 0.9rem;
+        padding: 0.95rem 1.1rem;
         border-bottom: 1px solid rgba(217, 229, 220, 0.88);
-        background: rgba(246,250,247,0.72);
+        background: #f8fafc;
     }
     .user-filter-toggle {
         display: none;
@@ -99,11 +99,11 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         border: 1px solid #d9e5dc;
         border-radius: 10px;
         background: #fff;
-        color: #42554e;
+        color: #374151;
         font-size: 0.78rem;
-        font-weight: 800;
+        font-weight: 700;
         padding: 0.45rem 0.7rem;
-        box-shadow: 0 6px 14px rgba(15, 35, 26, 0.06);
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
     }
     .user-filter-group {
         display: flex;
@@ -114,9 +114,9 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
     .user-filter-label {
         display: block;
         margin-bottom: 0;
-        color: #5d6d64;
-        font-size: 0.74rem;
-        font-weight: 800;
+        color: #64748b;
+        font-size: 0.72rem;
+        font-weight: 700;
         letter-spacing: 0.04em;
         text-transform: uppercase;
     }
@@ -124,11 +124,11 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
     .user-page .dataTables_length select,
     .user-page .dataTables_filter input,
     .user-delete-modal textarea {
-        min-height: 38px;
-        border-radius: 12px !important;
-        border: 1px solid #d9e5dc !important;
+        min-height: 40px;
+        border-radius: 10px !important;
+        border: 1px solid #d1d5db !important;
         background: #fff !important;
-        color: #1e2b24 !important;
+        color: #111827 !important;
         box-shadow: none !important;
     }
     .user-page .dataTables-toolbar,
@@ -137,20 +137,20 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 0.58rem 0.9rem;
+        padding: 0.85rem 1.1rem;
         flex-wrap: wrap;
     }
     .user-page .dataTables_filter label,
     .user-page .dataTables_length label {
         margin-bottom: 0;
-        color: #5d6d64;
+        color: #6b7280;
         font-size: 0.82rem;
-        font-weight: 700;
+        font-weight: 500;
     }
     .user-page .dataTables_filter input {
         width: min(300px, 72vw) !important;
         margin-left: 0.6rem;
-        padding: 0.45rem 0.8rem;
+        padding: 0.5rem 0.85rem;
     }
     .user-page .dataTables_length select {
         width: 76px;
@@ -161,36 +161,36 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         margin: 0 !important;
     }
     .user-table.dataTable thead th {
-        background: #fbfdfb;
-        color: #5d6d64;
+        background: #f9fafb;
+        color: #374151;
         font-size: 0.74rem;
-        font-weight: 800;
+        font-weight: 700;
         text-transform: uppercase;
         border-top: 0 !important;
-        border-bottom: 1px solid #d9e5dc !important;
-        padding: 0.58rem 0.75rem;
+        border-bottom: 1px solid #e5e7eb !important;
+        padding: 0.78rem 0.85rem;
         vertical-align: middle;
     }
     .user-table.dataTable tbody td {
-        padding: 0.6rem 0.75rem;
+        padding: 0.82rem 0.85rem;
         vertical-align: middle;
-        border-bottom: 1px solid rgba(217, 229, 220, 0.72);
-        color: #1e2b24;
-        font-size: 0.86rem;
+        border-bottom: 1px solid #f3f4f6;
+        color: #111827;
+        font-size: 0.88rem;
     }
     .user-table tbody tr:hover {
-        background: rgba(223,245,242,0.28);
+        background: #fafcff;
     }
     .badge-role,
     .user-status-badge {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 26px;
-        padding: 0.28rem 0.62rem;
+        min-height: 28px;
+        padding: 0.3rem 0.68rem;
         border-radius: 999px;
         font-size: 0.75rem;
-        font-weight: 800;
+        font-weight: 700;
         border: 1px solid transparent;
     }
     .badge-role-admin { background: #dff5f2; color: #0f766e; border-color: rgba(15,118,110,0.14); }
@@ -201,21 +201,36 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.4rem;
+        gap: 0.45rem;
     }
     .user-action-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px !important;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px !important;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid #d9e5dc !important;
+        border: 1px solid #d1d5db !important;
         background: #fff !important;
         box-shadow: none !important;
+        transition: 0.2s ease;
+        text-decoration: none !important;
     }
-    .user-action-edit { color: #9a6a13 !important; }
+    .user-action-btn:hover {
+        background: #f9fafb !important;
+        border-color: #9ca3af !important;
+        transform: translateY(-1px);
+    }
+    .user-action-view { color: #374151 !important; }
+    .user-action-edit { color: #4f46e5 !important; }
     .user-action-delete { color: #c95f5a !important; }
+    .user-name-link {
+        color: #111827 !important;
+        text-decoration: none !important;
+    }
+    .user-name-link:hover {
+        color: #4f46e5 !important;
+    }
     .user-delete-modal .modal-content {
         border: 1px solid #d9e5dc !important;
         border-radius: 18px !important;
@@ -246,8 +261,8 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         .user-filter-bar::before {
             content: "Filter Data";
             color: #10231d;
-            font-size: 0.95rem;
-            font-weight: 800;
+            font-size: 0.92rem;
+            font-weight: 700;
         }
         .user-filter-toggle {
             display: inline-flex;
@@ -272,9 +287,7 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
             flex-direction: column;
             gap: 0.35rem;
         }
-        .user-card-header {
-            padding: 0.8rem;
-        }
+        .user-card-header { padding: 0.9rem; }
         .user-title-wrap {
             align-items: flex-start;
             width: 100%;
@@ -294,15 +307,15 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
         }
         .user-table.dataTable thead th,
         .user-table.dataTable tbody td {
-            padding: 0.58rem 0.7rem;
+            padding: 0.68rem 0.72rem;
             font-size: 0.82rem;
         }
         .user-action-group {
             gap: 0.3rem;
         }
         .user-action-btn {
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
             border-radius: 9px !important;
         }
         .user-page .dataTables_filter label {
@@ -357,7 +370,7 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
                 <span class="user-title-icon"><i class="fas fa-users-cog"></i></span>
                 <div>
                     <h5 class="user-title">Manajemen User</h5>
-                    <p class="user-subtitle">Kelola akun, role akses, dan status user.</p>
+                    <p class="user-subtitle">Kelola role akses, status akun, dan akses profil pegawai secara konsisten.</p>
                 </div>
             </div>
             <a href="home-admin.php?page=form-master-data-user&mode=create" class="btn btn-user-primary">
@@ -391,7 +404,7 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
                             <th>Jabatan</th>
                             <th class="text-center">Role</th>
                             <th class="text-center">Status</th>
-                            <th class="text-center" width="10%">Aksi</th>
+                            <th class="text-center" width="14%">Aksi</th>
                         </tr>
                     </thead>
                     <tbody></tbody>

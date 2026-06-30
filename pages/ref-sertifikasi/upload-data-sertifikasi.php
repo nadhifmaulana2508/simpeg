@@ -29,6 +29,42 @@ ob_start();
 header('Content-Type: application/json');
 if (session_id() == '') session_start();
 
+function import_preview_token() {
+    if (function_exists('random_bytes')) {
+        return bin2hex(random_bytes(16));
+    }
+
+    if (function_exists('openssl_random_pseudo_bytes')) {
+        $bytes = openssl_random_pseudo_bytes(16);
+        if ($bytes !== false) {
+            return bin2hex($bytes);
+        }
+    }
+
+    return sha1(uniqid('sertifikasi_preview_', true) . mt_rand());
+}
+
+function import_token_equals($known, $user) {
+    if (function_exists('hash_equals')) {
+        return hash_equals($known, $user);
+    }
+
+    $known = (string) $known;
+    $user = (string) $user;
+
+    if (strlen($known) !== strlen($user)) {
+        return false;
+    }
+
+    $result = 0;
+    $length = strlen($known);
+    for ($i = 0; $i < $length; $i++) {
+        $result |= ord($known[$i]) ^ ord($user[$i]);
+    }
+
+    return $result === 0;
+}
+
 // --- HELPER: SQL Value Cleaner ---
 function getSqlVal($conn, $val) {
     if ($val === '' || $val === null || $val === false || $val === 'NULL') {
@@ -186,7 +222,14 @@ try {
         
         // Simpan data array ke dalam textarea tersembunyi agar bisa diambil JS
         $json_rows = json_encode($previewData);
+        $preview_token = import_preview_token();
+        $_SESSION['import_sertifikasi_preview_rows'] = $previewData;
+        $_SESSION['import_sertifikasi_preview_token'] = $preview_token;
+        $_SESSION['import_sertifikasi_preview_created_at'] = time();
+        session_write_close();
+
         $html .= '<textarea id="json_data_sertifikasi" style="display:none;">' . htmlspecialchars($json_rows) . '</textarea>';
+        $html .= '<input type="hidden" id="import_sertifikasi_preview_token" value="' . htmlspecialchars($preview_token, ENT_QUOTES, 'UTF-8') . '">';
 
         ob_clean();
         echo json_encode(['status' => 'success', 'html' => $html]);
@@ -197,10 +240,23 @@ try {
     // BAGIAN B: SIMPAN DATA (Eksekusi ke Database)
     // =========================================================
     elseif ($action === 'save') {
-        if (!isset($_POST['data_sertifikasi'])) throw new Exception("Data tidak ditemukan.");
+        $data = array();
+        $posted_token = isset($_POST['preview_token']) ? trim($_POST['preview_token']) : '';
 
-        $data = json_decode($_POST['data_sertifikasi'], true);
-        if (!$data) throw new Exception("Format data korup.");
+        if ($posted_token !== '' &&
+            isset($_SESSION['import_sertifikasi_preview_token']) &&
+            import_token_equals($_SESSION['import_sertifikasi_preview_token'], $posted_token) &&
+            isset($_SESSION['import_sertifikasi_preview_rows']) &&
+            is_array($_SESSION['import_sertifikasi_preview_rows'])) {
+            $data = $_SESSION['import_sertifikasi_preview_rows'];
+        } elseif (isset($_POST['data_sertifikasi'])) {
+            $data = json_decode($_POST['data_sertifikasi'], true);
+        }
+
+        if (!$data || !is_array($data)) throw new Exception("Data tidak ditemukan atau sesi preview sudah berakhir.");
+
+        unset($_SESSION['import_sertifikasi_preview_rows'], $_SESSION['import_sertifikasi_preview_token'], $_SESSION['import_sertifikasi_preview_created_at']);
+        session_write_close();
 
         $jml_insert = 0;
         $jml_update = 0;

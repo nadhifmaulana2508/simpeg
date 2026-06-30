@@ -153,6 +153,9 @@
 let timer;
 let sessionTimeout = 15 * 60 * 1000; // 15 menit
 let keepAliveInterval = 5 * 60 * 1000; // ping tiap 5 menit
+let keepAliveCooldown = 60 * 1000; // minimal jeda 1 menit antar ping aktivitas
+let lastKeepAliveAt = 0;
+let keepAliveInFlight = false;
 
 function resetSession() {
   clearTimeout(timer);
@@ -172,13 +175,26 @@ function resetSession() {
 }
 
 function sendKeepAlive() {
-  fetch('dist/keepalive.php');
+  if (keepAliveInFlight) return;
+  keepAliveInFlight = true;
+  fetch('dist/keepalive.php', { credentials: 'same-origin' })
+    .catch(() => {})
+    .finally(() => {
+      keepAliveInFlight = false;
+      lastKeepAliveAt = Date.now();
+    });
+}
+
+function sendKeepAliveIfNeeded() {
+  const now = Date.now();
+  if ((now - lastKeepAliveAt) < keepAliveCooldown) return;
+  sendKeepAlive();
 }
 
 ['click', 'mousemove', 'keydown', 'scroll'].forEach(evt => {
   document.addEventListener(evt, () => {
     resetSession();
-    sendKeepAlive();
+    sendKeepAliveIfNeeded();
   });
 });
 

@@ -2,7 +2,7 @@
 /*********************************************************
  * FILE     : pages/ref-sertifikasi/master-data-sertifikasi.php
  * MODULE   : Sertifikasi Pegawai (Secure & Offline)
- * STYLE    : Modern UI (Icon Home Updated)
+ * STYLE    : Modern UI
  *********************************************************/
 
 if (session_id() == '') session_start();
@@ -67,22 +67,29 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
 
     /* Buttons Modern */
     .btn-action-rounded { border-radius: 50px; padding: 8px 20px; font-weight: 600; font-size: 0.85rem; }
-    
-    /* Style Tombol Home Bulat */
-    .btn-circle-home { 
-        width: 40px; height: 40px; 
-        border-radius: 50%; 
-        display: inline-flex; align-items: center; justify-content: center; 
-        font-size: 1.1rem; color: #64748b; background: #fff; 
-        border: 1px solid #e2e8f0; transition: all 0.2s;
+    .btn-download-excel {
+        background: #0f766e;
+        color: #fff;
+        border: none;
+        border-radius: 50px;
+        padding: 8px 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
     }
-    .btn-circle-home:hover { background: #f1f5f9; color: #0ea5e9; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .btn-download-excel:hover { background: #115e59; color: #fff; }
+    .filters-panel {
+        margin: 0 4px 18px;
+        padding: 16px;
+        border-radius: 14px;
+        background: #f8fafc;
+        border: 1px solid #edf2f7;
+    }
 
     @media (max-width: 768px) {
         .card-header-modern { flex-direction: column; align-items: flex-start; }
-        .header-actions { width: 100%; display: flex; gap: 10px; margin-top: 10px; justify-content: space-between; }
-        .btn-action-rounded { flex: 1; }
-        .btn-circle-home { width: 100%; border-radius: 8px; } /* Di HP jadi kotak lebar biar gampang dipencet */
+        .header-actions { width: 100%; display: grid; gap: 10px; margin-top: 10px; grid-template-columns: 1fr; }
+        .btn-action-rounded, .btn-download-excel { width: 100%; text-align: center; }
+        .filters-panel { padding: 14px; margin: 0 0 18px; }
     }
 </style>
 
@@ -99,13 +106,12 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
             </div>
             
             <div class="header-actions">
-                <a href="home-admin.php" class="btn btn-circle-home shadow-sm mr-2" title="Dashboard / Home">
-                    <i class="fa fa-home"></i>
-                </a>
-                
                 <?php if($is_admin): ?>
                 <a href="home-admin.php?page=form-import-data-sertifikasi" class="btn btn-outline-success btn-action-rounded shadow-sm">
                     <i class="fas fa-file-excel mr-1"></i> Import
+                </a>
+                <a href="pages/ref-sertifikasi/export-data-sertifikasi.php?type=excel" id="btnExportSertifikasi" class="btn btn-download-excel shadow-sm" target="_blank">
+                    <i class="fas fa-download mr-1"></i> Download Excel
                 </a>
                 <a href="home-admin.php?page=form-master-data-sertifikasi" class="btn btn-primary btn-action-rounded shadow-sm" style="background-color: #5D5FEF; border-color: #5D5FEF;">
                     <i class="fas fa-plus mr-1"></i> Tambah
@@ -115,7 +121,7 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
         </div>
 
         <div class="card-body">
-            <div class="row mb-4 bg-light rounded p-3 mx-1 border border-light">
+            <div class="row filters-panel">
                 <div class="col-12 col-md-2 mb-2">
                     <span class="filter-label">Tahun</span>
                     <select id="filter_tahun" class="form-control select2">
@@ -161,7 +167,7 @@ $qKantor = mysqli_query($conn, "SELECT * FROM tb_kantor WHERE level IN ('KC','KP
                             <th>Pegawai</th>
                             <th>Info Sertifikasi</th>
                             <th>Penyelenggara / Tgl</th>
-                            <th>Unit Kerja</th>
+                            <th>Kode Cabang / Jabatan</th>
                             <th class="text-center">Status</th>
                             <th class="text-center" width="10%">Aksi</th>
                         </tr>
@@ -214,6 +220,27 @@ $(document).ready(function() {
     // Init Select2
     $('.select2').select2({ theme: 'bootstrap4', width: '100%' });
 
+    function getSelectedKantor() {
+        var kantorVal = $('#filter_kantor').val();
+        if(!kantorVal && $('#hidden_kantor').length) kantorVal = $('#hidden_kantor').val();
+        return kantorVal || '';
+    }
+
+    function updateExportLink() {
+        var params = new URLSearchParams();
+        params.set('type', 'excel');
+
+        var tahun = $('#filter_tahun').val();
+        var sertifikasi = $('#filter_sertifikasi').val();
+        var kantor = getSelectedKantor();
+
+        if (tahun) params.set('tahun', tahun);
+        if (sertifikasi) params.set('sertifikasi', sertifikasi);
+        if (kantor) params.set('kantor', kantor);
+
+        $('#btnExportSertifikasi').attr('href', 'pages/ref-sertifikasi/export-data-sertifikasi.php?' + params.toString());
+    }
+
     // Init DataTable
     var table = $('#tabelSertifikasiAjax').DataTable({
         "processing": true,
@@ -226,9 +253,7 @@ $(document).ready(function() {
             "data": function (d) {
                 d.tahun       = $('#filter_tahun').val();
                 d.sertifikasi = $('#filter_sertifikasi').val();
-                var kantorVal = $('#filter_kantor').val();
-                if(!kantorVal && $('#hidden_kantor').length) kantorVal = $('#hidden_kantor').val();
-                d.kantor = kantorVal;
+                d.kantor = getSelectedKantor();
             }
         },
         "columns": [
@@ -263,7 +288,10 @@ $(document).ready(function() {
     // Refresh Table saat Filter Berubah
     $('#filter_tahun, #filter_sertifikasi, #filter_kantor').change(function(){
         table.ajax.reload();
+        updateExportLink();
     });
+
+    updateExportLink();
 
     // --- LOGIC MODAL HAPUS ---
     $('body').on('click', '.btn-delete', function(e) {

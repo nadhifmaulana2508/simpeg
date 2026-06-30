@@ -46,7 +46,7 @@
                     </div>
                 </div>
 
-                <form id="uploadForm" enctype="multipart/form-data">
+                <form id="uploadForm" enctype="multipart/form-data" data-no-loading="true">
                     <div class="mb-3">
                         <div class="d-flex align-items-center mb-3">
                             <span class="step-badge">2</span>
@@ -88,6 +88,12 @@
 <script src="plugins/sweetalert2/sweetalert2.all.min.js"></script>
 
 <script>
+function hideGlobalSimpegLoader() {
+    if (window.SimpegUI && typeof window.SimpegUI.hideLoader === 'function') {
+        window.SimpegUI.hideLoader();
+    }
+}
+
 // Fallback jika file lokal tidak ditemukan (Biar gak error blank)
 if (typeof Swal === 'undefined') {
     alert("Error: File plugins/sweetalert2/sweetalert2.all.min.js tidak ditemukan. Fitur popup mungkin tidak jalan.");
@@ -132,6 +138,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     fetch('pages/ref-diklat/upload-data-diklat.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
         Swal.close();
         if (res.status === 'success') {
             document.getElementById('preview-area').innerHTML = res.html;
@@ -141,6 +148,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
             Swal.fire('Gagal', res.message, 'error');
         }
     }).catch(err => {
+        hideGlobalSimpegLoader();
         Swal.close();
         Swal.fire('Error', 'Terjadi kesalahan server (PHP Error).', 'error');
     });
@@ -151,8 +159,9 @@ document.body.addEventListener('click', function(e) {
     if (e.target && (e.target.id == 'btnSimpanDiklat' || e.target.closest('#btnSimpanDiklat'))) {
         e.preventDefault();
         const textArea = document.getElementById('json_data_diklat');
+        const tokenInput = document.getElementById('import_diklat_preview_token');
         
-        if(!textArea) { Swal.fire('Error', 'Data preview hilang.', 'error'); return; }
+        if(!textArea && !tokenInput) { Swal.fire('Error', 'Data preview hilang.', 'error'); return; }
 
         Swal.fire({
             title: 'Simpan Diklat?',
@@ -164,22 +173,28 @@ document.body.addEventListener('click', function(e) {
             confirmButtonText: 'Ya, Simpan!'
         }).then((result) => {
             if (result.isConfirmed) {
-                simpanKeDatabase(textArea.value);
+                simpanKeDatabase(textArea ? textArea.value : '', tokenInput ? tokenInput.value : '');
             }
         });
     }
 });
 
-function simpanKeDatabase(jsonData) {
+function simpanKeDatabase(jsonData, previewToken) {
     const formData = new FormData();
     formData.append('action', 'save');
-    formData.append('data_diklat', jsonData); 
+    if (previewToken) {
+        formData.append('preview_token', previewToken);
+    } else {
+        formData.append('data_diklat', jsonData);
+    }
 
     Swal.fire({title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
 
     fetch('pages/ref-diklat/upload-data-diklat.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
+        Swal.close();
         if (res.status === 'success') {
             Swal.fire('Sukses!', res.message, 'success').then(() => {
                 window.location.href = "home-admin.php?page=master-data-diklat"; 
@@ -188,6 +203,7 @@ function simpanKeDatabase(jsonData) {
             Swal.fire('Gagal', res.message, 'error');
         }
     }).catch(err => {
+        hideGlobalSimpegLoader();
         Swal.close();
         Swal.fire('Error', 'Koneksi Gagal', 'error');
     });

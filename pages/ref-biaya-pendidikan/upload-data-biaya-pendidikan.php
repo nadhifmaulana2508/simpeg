@@ -22,6 +22,42 @@ if (session_id() == '') session_start();
 ob_start();
 header('Content-Type: application/json');
 
+function import_preview_token() {
+    if (function_exists('random_bytes')) {
+        return bin2hex(random_bytes(16));
+    }
+
+    if (function_exists('openssl_random_pseudo_bytes')) {
+        $bytes = openssl_random_pseudo_bytes(16);
+        if ($bytes !== false) {
+            return bin2hex($bytes);
+        }
+    }
+
+    return sha1(uniqid('biaya_preview_', true) . mt_rand());
+}
+
+function import_token_equals($known, $user) {
+    if (function_exists('hash_equals')) {
+        return hash_equals($known, $user);
+    }
+
+    $known = (string) $known;
+    $user = (string) $user;
+
+    if (strlen($known) !== strlen($user)) {
+        return false;
+    }
+
+    $result = 0;
+    $length = strlen($known);
+    for ($i = 0; $i < $length; $i++) {
+        $result |= ord($known[$i]) ^ ord($user[$i]);
+    }
+
+    return $result === 0;
+}
+
 // --- 1. FUNGSI HELPER & SMART LOOKUP ---
 
 // Helper Aman SQL (Linux Friendly)
@@ -196,7 +232,14 @@ try {
         
         // Simpan Data Mentah ke Textarea untuk dikirim balik saat Save
         $json_rows = json_encode($rows);
+        $preview_token = import_preview_token();
+        $_SESSION['import_biaya_preview_rows'] = $rows;
+        $_SESSION['import_biaya_preview_token'] = $preview_token;
+        $_SESSION['import_biaya_preview_created_at'] = time();
+        session_write_close();
+
         $html .= '<textarea id="json_data_biaya" style="display:none;">' . htmlspecialchars($json_rows) . '</textarea>';
+        $html .= '<input type="hidden" id="import_biaya_preview_token" value="' . htmlspecialchars($preview_token, ENT_QUOTES, 'UTF-8') . '">';
 
         ob_clean();
         echo json_encode(['status' => 'success', 'html' => $html]);
@@ -207,10 +250,23 @@ try {
     // B. MODE SAVE (EKSEKUSI DATABASE)
     // ==========================================================
     elseif ($action === 'save') {
-        if (!isset($_POST['data_biaya'])) throw new Exception("Data import tidak ditemukan.");
-        
-        $data = json_decode($_POST['data_biaya'], true);
-        if (!$data) throw new Exception("Format data corrupt.");
+        $data = array();
+        $posted_token = isset($_POST['preview_token']) ? trim($_POST['preview_token']) : '';
+
+        if ($posted_token !== '' &&
+            isset($_SESSION['import_biaya_preview_token']) &&
+            import_token_equals($_SESSION['import_biaya_preview_token'], $posted_token) &&
+            isset($_SESSION['import_biaya_preview_rows']) &&
+            is_array($_SESSION['import_biaya_preview_rows'])) {
+            $data = $_SESSION['import_biaya_preview_rows'];
+        } elseif (isset($_POST['data_biaya'])) {
+            $data = json_decode($_POST['data_biaya'], true);
+        }
+
+        if (!$data || !is_array($data)) throw new Exception("Data import tidak ditemukan atau sesi preview sudah berakhir.");
+
+        unset($_SESSION['import_biaya_preview_rows'], $_SESSION['import_biaya_preview_token'], $_SESSION['import_biaya_preview_created_at']);
+        session_write_close();
 
         $berhasil = 0; $updated = 0; $gagal = 0;
         $pesan_error_db = "";

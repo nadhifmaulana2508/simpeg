@@ -226,8 +226,8 @@ if (!empty($foto_db)) {
                                 
                                 <?php if($can_edit): ?>
                                 <div class="mt-4 text-right">
-                                    <a href="home-admin.php?page=form-master-data-pegawai&mode=edit&id=<?= urlencode($peg['id_peg']); ?>" class="btn btn-warning shadow-sm"><i class="fa fa-edit"></i> Edit Biodata</a>
-                                    <a href="./pages/report/print-biodata-pegawai.php?id_peg=<?= urlencode($id_peg); ?>" target="_blank" class="btn btn-primary shadow-sm ml-2"><i class="fas fa-print"></i> Cetak CV</a>
+                                    <a href="home-admin.php?page=form-master-data-pegawai&mode=edit&id=<?= urlencode($peg['id_peg']); ?>" class="btn btn-primary shadow-sm"><i class="fa fa-edit"></i> Edit Biodata</a>
+                                    <a href="./pages/report/print-biodata-pegawai.php?id_peg=<?= urlencode($id_peg); ?>" target="_blank" class="btn btn-outline-primary shadow-sm ml-2"><i class="fas fa-print"></i> Cetak CV</a>
                                 </div>
                                 <?php endif; ?>
                             </div>

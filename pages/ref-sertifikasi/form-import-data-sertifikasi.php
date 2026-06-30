@@ -52,7 +52,7 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
                     </div>
                 </div>
 
-                <form id="uploadForm" enctype="multipart/form-data">
+                <form id="uploadForm" enctype="multipart/form-data" data-no-loading="true">
                     <div class="mb-3">
                         <div class="d-flex align-items-center mb-3">
                             <span class="step-badge">2</span>
@@ -91,6 +91,12 @@ if (!isset($_SESSION['hak_akses']) || ($_SESSION['hak_akses'] != 'admin' && $_SE
 <script src="plugins/sweetalert2/sweetalert2.min.js"></script>
 
 <script>
+function hideGlobalSimpegLoader() {
+    if (window.SimpegUI && typeof window.SimpegUI.hideLoader === 'function') {
+        window.SimpegUI.hideLoader();
+    }
+}
+
 // UI Logic: Drag & Drop Effect
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('file_excel');
@@ -131,6 +137,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     fetch('pages/ref-sertifikasi/upload-data-sertifikasi.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
         Swal.close();
         if (res.status === 'success') {
             document.getElementById('preview-area').innerHTML = res.html;
@@ -141,6 +148,8 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         }
     }).catch(err => {
         console.error(err);
+        hideGlobalSimpegLoader();
+        Swal.close();
         Swal.fire('Server Error', 'Terjadi kesalahan saat upload. Cek console log.', 'error');
     });
 });
@@ -151,9 +160,10 @@ document.body.addEventListener('click', function(e) {
     if (e.target && (e.target.id == 'btnSimpanSertifikasi' || e.target.closest('#btnSimpanSertifikasi'))) {
         e.preventDefault();
         const textArea = document.getElementById('json_data_sertifikasi');
+        const tokenInput = document.getElementById('import_sertifikasi_preview_token');
         
         // Safety Check: Pastikan data hidden ada
-        if(!textArea || !textArea.value) { 
+        if((!textArea || !textArea.value) && (!tokenInput || !tokenInput.value)) { 
             Swal.fire('Data Kosong', 'Silakan upload ulang file Excel.', 'error'); 
             return; 
         }
@@ -169,16 +179,20 @@ document.body.addEventListener('click', function(e) {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                simpanKeDatabase(textArea.value);
+                simpanKeDatabase(textArea ? textArea.value : '', tokenInput ? tokenInput.value : '');
             }
         });
     }
 });
 
-function simpanKeDatabase(jsonData) {
+function simpanKeDatabase(jsonData, previewToken) {
     const formData = new FormData();
     formData.append('action', 'save');
-    formData.append('data_sertifikasi', jsonData); 
+    if (previewToken) {
+        formData.append('preview_token', previewToken);
+    } else {
+        formData.append('data_sertifikasi', jsonData);
+    }
 
     Swal.fire({
         title: 'Menyimpan Data...', 
@@ -190,6 +204,8 @@ function simpanKeDatabase(jsonData) {
     fetch('pages/ref-sertifikasi/upload-data-sertifikasi.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(res => {
+        hideGlobalSimpegLoader();
+        Swal.close();
         if (res.status === 'success') {
             Swal.fire({
                 icon: 'success', 
@@ -203,6 +219,8 @@ function simpanKeDatabase(jsonData) {
             Swal.fire('Gagal Menyimpan', res.message, 'error');
         }
     }).catch(err => {
+        hideGlobalSimpegLoader();
+        Swal.close();
         Swal.fire('Error Koneksi', 'Gagal terhubung ke server.', 'error');
     });
 }

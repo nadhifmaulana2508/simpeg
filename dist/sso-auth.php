@@ -209,7 +209,6 @@ function simpeg_clear_sso_cookie() {
 
 function simpeg_fetch_user_role($conn, $id_peg, $fallback_name, $whoami = array()) {
     $safe_id = mysqli_real_escape_string($conn, $id_peg);
-    $auto_role = simpeg_auto_role_for_employee($conn, $id_peg, $whoami);
     $q = mysqli_query($conn, "
         SELECT id_user, nama_user, hak_akses, status_aktif, id_pegawai
         FROM tb_user
@@ -220,19 +219,8 @@ function simpeg_fetch_user_role($conn, $id_peg, $fallback_name, $whoami = array(
 
     if ($q && mysqli_num_rows($q) > 0) {
         $row = mysqli_fetch_assoc($q);
-        $stored_role = $row['hak_akses'] !== '' ? $row['hak_akses'] : 'User';
-        $final_role = simpeg_role_rank($auto_role) > simpeg_role_rank($stored_role) ? $auto_role : $stored_role;
-
-        if ($final_role !== $stored_role) {
-            $safe_role = mysqli_real_escape_string($conn, $final_role);
-            $safe_user = mysqli_real_escape_string($conn, $row['id_user']);
-            mysqli_query($conn, "
-                UPDATE tb_user
-                SET hak_akses = '$safe_role', updated_at = NOW(), updated_by = 'system-sso-role'
-                WHERE id_user = '$safe_user'
-                LIMIT 1
-            ");
-        }
+        $stored_role = trim((string) $row['hak_akses']);
+        $final_role = $stored_role !== '' ? $stored_role : 'User';
 
         return array(
             'id_user' => $row['id_user'],
@@ -246,7 +234,7 @@ function simpeg_fetch_user_role($conn, $id_peg, $fallback_name, $whoami = array(
     return array(
         'id_user' => $id_peg,
         'nama_user' => $fallback_name,
-        'hak_akses' => strtolower($auto_role),
+        'hak_akses' => 'user',
         'status_aktif' => 'Y',
         'id_pegawai' => $id_peg
     );

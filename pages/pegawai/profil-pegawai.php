@@ -634,17 +634,17 @@ $src_foto   = function_exists('simpeg_resolve_photo_path') ? simpeg_resolve_phot
                                 
                                 <?php if($bisa_edit_data): ?>
                                 <div class="mt-4 text-right">
-                                    <a href="<?= profile_page_url('form-master-data-pegawai', array('mode' => 'edit', 'id' => $peg['id_peg'])); ?>" class="btn btn-warning shadow-sm"><i class="fa fa-edit"></i> Edit Biodata</a>
-                                    <a href="./pages/report/print-biodata-pegawai.php?id_peg=<?= $id_peg ?>" target="_blank" class="btn btn-primary shadow-sm ml-2"><i class="fas fa-print"></i> Cetak CV</a>
+                                    <a href="<?= profile_page_url('form-master-data-pegawai', array('mode' => 'edit', 'id' => $peg['id_peg'])); ?>" class="btn btn-primary shadow-sm"><i class="fa fa-edit"></i> Edit Biodata</a>
+                                    <a href="./pages/report/print-biodata-pegawai.php?id_peg=<?= $id_peg ?>" target="_blank" class="btn btn-outline-primary shadow-sm ml-2"><i class="fas fa-print"></i> Cetak CV</a>
                                 </div>
                                 <?php else: ?>
                                     <div class="mt-4 text-right">
                                         <?php if ($bisa_request_biodata): ?>
-                                            <button type="button" class="btn btn-warning shadow-sm" data-toggle="modal" data-target="#biodataRequestModal">
+                                            <button type="button" class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#biodataRequestModal">
                                                 <i class="fa fa-edit"></i> Ajukan Edit Biodata
                                             </button>
                                         <?php endif; ?>
-                                        <a href="./pages/report/print-biodata-pegawai.php?id_peg=<?= $id_peg ?>" target="_blank" class="btn btn-primary shadow-sm ml-2"><i class="fas fa-print"></i> Cetak CV</a>
+                                        <a href="./pages/report/print-biodata-pegawai.php?id_peg=<?= $id_peg ?>" target="_blank" class="btn btn-outline-primary shadow-sm ml-2"><i class="fas fa-print"></i> Cetak CV</a>
                                     </div>
                                 <?php endif; ?>
                             </div>

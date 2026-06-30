@@ -146,9 +146,9 @@ $pegawai_locked = ($mode == 'edit');
     .user-form-page { padding-top: 0.75rem; padding-bottom: 1rem; }
     .user-form-card {
         border: 1px solid rgba(217,229,220,0.95) !important;
-        border-radius: 14px !important;
-        background: rgba(255,255,255,0.95) !important;
-        box-shadow: 0 12px 30px rgba(15,35,26,0.06) !important;
+        border-radius: 16px !important;
+        background: #fff !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
         overflow: hidden;
     }
     .user-form-header {
@@ -158,37 +158,37 @@ $pegawai_locked = ($mode == 'edit');
         gap: 0.8rem;
         padding: 0.8rem 1rem;
         border-bottom: 1px solid rgba(217,229,220,0.95);
-        background: linear-gradient(180deg, rgba(246,250,247,0.96), rgba(255,255,255,0.96));
+        background: #fff;
     }
-    .user-form-title { margin: 0; font-size: 1.05rem; font-weight: 800; color: #1e2b24; }
-    .user-form-subtitle { margin: 0.1rem 0 0; font-size: 0.8rem; color: #5d6d64; }
+    .user-form-title { margin: 0; font-size: 1.08rem; font-weight: 700; color: #111827; }
+    .user-form-subtitle { margin: 0.16rem 0 0; font-size: 0.84rem; color: #6b7280; }
     .user-form-icon {
         width: 36px; height: 36px; border-radius: 12px;
         display: inline-flex; align-items: center; justify-content: center;
-        background: #dff5f2; color: #0f766e; flex: 0 0 auto;
+        background: #eff6ff; color: #4f46e5; flex: 0 0 auto;
     }
     .user-form-body { padding: 1rem; }
     .user-form-panel {
         border: 1px solid #d9e5dc;
         border-radius: 12px;
-        background: #f6faf7;
+        background: #f8fafc;
         padding: 0.8rem;
         margin-bottom: 1rem;
     }
     .user-form-label {
         display: block;
         margin-bottom: 0.4rem;
-        color: #5d6d64;
+        color: #64748b;
         font-size: 0.74rem;
-        font-weight: 800;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.04em;
     }
     .form-control-modern,
     .select2-container .select2-selection--single {
         min-height: 40px !important;
-        border-radius: 12px !important;
-        border: 1px solid #d9e5dc !important;
+        border-radius: 10px !important;
+        border: 1px solid #d1d5db !important;
         box-shadow: none !important;
     }
     .select2-container .select2-selection--single { display: flex; align-items: center; }
@@ -201,25 +201,25 @@ $pegawai_locked = ($mode == 'edit');
         margin: 0 0 0.85rem;
         padding-bottom: 0.5rem;
         border-bottom: 1px solid #d9e5dc;
-        color: #5d6d64;
+        color: #64748b;
         font-size: 0.8rem;
-        font-weight: 800;
+        font-weight: 700;
         text-transform: uppercase;
     }
     .btn-user-submit {
         border: 0 !important;
-        border-radius: 12px !important;
+        border-radius: 10px !important;
         padding: 0.6rem 1rem !important;
-        background: #0f766e !important;
+        background: #4f46e5 !important;
         color: #fff !important;
-        font-weight: 800;
+        font-weight: 700;
     }
     .btn-user-back {
-        border-radius: 12px !important;
-        border: 1px solid #d9e5dc !important;
+        border-radius: 10px !important;
+        border: 1px solid #d1d5db !important;
         background: #fff !important;
-        color: #0f766e !important;
-        font-weight: 800;
+        color: #374151 !important;
+        font-weight: 700;
     }
     @media (max-width: 767.98px) {
         .user-form-header,

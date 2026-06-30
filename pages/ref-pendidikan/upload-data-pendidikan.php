@@ -22,6 +22,42 @@ while (ob_get_level()) ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 
+function import_preview_token() {
+    if (function_exists('random_bytes')) {
+        return bin2hex(random_bytes(16));
+    }
+
+    if (function_exists('openssl_random_pseudo_bytes')) {
+        $bytes = openssl_random_pseudo_bytes(16);
+        if ($bytes !== false) {
+            return bin2hex($bytes);
+        }
+    }
+
+    return sha1(uniqid('pendidikan_preview_', true) . mt_rand());
+}
+
+function import_token_equals($known, $user) {
+    if (function_exists('hash_equals')) {
+        return hash_equals($known, $user);
+    }
+
+    $known = (string) $known;
+    $user = (string) $user;
+
+    if (strlen($known) !== strlen($user)) {
+        return false;
+    }
+
+    $result = 0;
+    $length = strlen($known);
+    for ($i = 0; $i < $length; $i++) {
+        $result |= ord($known[$i]) ^ ord($user[$i]);
+    }
+
+    return $result === 0;
+}
+
 // --- HELPER SQL VALUE (PENTING BUAT LINUX) ---
 function getSqlVal($conn, $val, $type = 'string') {
     if ($val === '' || $val === null || $val === false || $val === 'NULL') {
@@ -176,7 +212,7 @@ try {
         $html .= '</tbody></table></div>';
         
         if (count($previewData) > $limit) {
-            $html .= '<div class="alert alert-info mt-2 small text-center">... menampilkan 10 dari ' . count($previewData) . ' data.</div>';
+        $html .= '<div class="alert alert-info mt-2 small text-center">... menampilkan 10 dari ' . count($previewData) . ' data.</div>';
         }
 
         $html .= '<hr><div class="d-flex justify-content-between align-items-center">';
@@ -185,17 +221,36 @@ try {
         $html .= '</div>';
         
         $json_data = json_encode($previewData);
-        kirimJson('success', '', $html . '<textarea id="json_data_pendidikan" style="display:none;">' . $json_data . '</textarea>');
+        $preview_token = import_preview_token();
+        $_SESSION['import_pendidikan_preview_rows'] = $previewData;
+        $_SESSION['import_pendidikan_preview_token'] = $preview_token;
+        $_SESSION['import_pendidikan_preview_created_at'] = time();
+        session_write_close();
+
+        kirimJson('success', '', $html . '<textarea id="json_data_pendidikan" style="display:none;">' . $json_data . '</textarea><input type="hidden" id="import_pendidikan_preview_token" value="' . htmlspecialchars($preview_token, ENT_QUOTES, 'UTF-8') . '">');
     }
 
     // ============================================================
     // ACTION: SAVE (UPSERT LOGIC - LINUX SAFE)
     // ============================================================
     elseif ($action === 'save') {
-        if (!isset($_POST['data_pendidikan'])) throw new Exception("Data tidak diterima");
-        
-        $data = json_decode($_POST['data_pendidikan'], true);
-        if (!$data) throw new Exception("Format data tidak valid.");
+        $data = array();
+        $posted_token = isset($_POST['preview_token']) ? trim($_POST['preview_token']) : '';
+
+        if ($posted_token !== '' &&
+            isset($_SESSION['import_pendidikan_preview_token']) &&
+            import_token_equals($_SESSION['import_pendidikan_preview_token'], $posted_token) &&
+            isset($_SESSION['import_pendidikan_preview_rows']) &&
+            is_array($_SESSION['import_pendidikan_preview_rows'])) {
+            $data = $_SESSION['import_pendidikan_preview_rows'];
+        } elseif (isset($_POST['data_pendidikan'])) {
+            $data = json_decode($_POST['data_pendidikan'], true);
+        }
+
+        if (!$data || !is_array($data)) throw new Exception("Data tidak diterima atau sesi preview sudah berakhir");
+
+        unset($_SESSION['import_pendidikan_preview_rows'], $_SESSION['import_pendidikan_preview_token'], $_SESSION['import_pendidikan_preview_created_at']);
+        session_write_close();
         
         $created_by = isset($_SESSION['nama_user']) ? mysqli_real_escape_string($conn, $_SESSION['nama_user']) : 'System';
         $berhasil = 0; $update = 0; $gagal = 0;

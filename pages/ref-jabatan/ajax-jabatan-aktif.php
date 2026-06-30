@@ -13,11 +13,23 @@ if (session_id()==='') session_start();
 
 @include_once __DIR__ . '/../../dist/koneksi.php';
 if (!isset($conn)) { @include_once __DIR__ . '/../../config/koneksi.php'; }
+@include_once __DIR__ . '/../../config.php';
 
 if (!$conn) { echo json_encode(array('data'=>array(), 'recordsTotal'=>0,'recordsFiltered'=>0,'error'=>'No DB connection')); exit; }
 
 function esc($c,$s){ return mysqli_real_escape_string($c, $s); }
 function is_kode($v){ return preg_match('~^\d{4,6}$~', $v); }
+function jabatan_ajax_page_url($page, $params = array()) {
+  if (function_exists('page_url')) {
+    return page_url($page, $params);
+  }
+
+  $url = 'home-admin.php?page=' . rawurlencode($page);
+  if (!empty($params)) {
+    $url .= '&' . http_build_query($params);
+  }
+  return $url;
+}
 
 $draw   = isset($_GET['draw'])   ? (int)$_GET['draw']   : 1;
 $start  = isset($_GET['start'])  ? (int)$_GET['start']  : 0;
@@ -93,8 +105,8 @@ $res = mysqli_query($conn, $sql_data);
 $data = array();
 if ($res) {
   while($r = mysqli_fetch_assoc($res)){
-    $aksi = '<a class="btn btn-xs btn-outline-info" title="Profil Pegawai" href="home-admin.php?page=view-detail-data-pegawai&id_peg='.htmlspecialchars($r['id_peg'],ENT_QUOTES,'UTF-8').'"><i class="fa fa-user"></i></a>';
-    $aksi .= ' <a class="btn btn-xs btn-outline-primary" title="Entry Jabatan Baru" href="home-admin.php?page=form-master-data-jabatan&uid='.htmlspecialchars($r['id_peg'],ENT_QUOTES,'UTF-8').'"><i class="fa fa-briefcase"></i></a>';
+    $aksi = '<a class="btn btn-xs btn-outline-info" title="Profil Pegawai" href="'.htmlspecialchars(jabatan_ajax_page_url('view-detail-data-pegawai', array('id_peg' => $r['id_peg'])),ENT_QUOTES,'UTF-8').'"><i class="fa fa-user"></i></a>';
+    $aksi .= ' <a class="btn btn-xs btn-outline-primary" title="Entry Jabatan Baru" href="'.htmlspecialchars(jabatan_ajax_page_url('form-master-data-jabatan', array('uid' => $r['id_peg'])),ENT_QUOTES,'UTF-8').'"><i class="fa fa-briefcase"></i></a>';
 
     $data[] = array(
       'id_peg'       => $r['id_peg'],
