@@ -281,6 +281,213 @@ function simpeg_resolve_photo_path($foto_db, $gender = '', $append_bust = true) 
     return $avatar;
 }
 
+function simpeg_dashboard_filter_current($conn = null) {
+    $hak_akses = isset($_SESSION['hak_akses']) ? strtolower((string) $_SESSION['hak_akses']) : '';
+    if ($hak_akses === 'kepala') {
+        $kode_kantor = isset($_SESSION['kode_kantor']) ? trim((string) $_SESSION['kode_kantor']) : '';
+        return $kode_kantor !== '' ? 'unit:' . $kode_kantor : '__all';
+    }
+
+    $raw = isset($_GET['dashboard_filter']) ? trim((string) $_GET['dashboard_filter']) : '__all';
+    $allowed = array(
+        '__all',
+        '__pusat',
+        '__korwil_semarang',
+        '__korwil_solo',
+        '__korwil_banyumas',
+        '__korwil_pekalongan'
+    );
+
+    if (in_array($raw, $allowed, true)) {
+        return $raw;
+    }
+
+    if (preg_match('/^cabang:[0-9]{3}$/', $raw)) {
+        return $raw;
+    }
+
+    if (preg_match('/^unit:[0-9A-Za-z]{6}$/', $raw)) {
+        return $raw;
+    }
+
+    return '__all';
+}
+
+function simpeg_dashboard_filter_profile($conn = null) {
+    $current = simpeg_dashboard_filter_current($conn);
+    $profile = array(
+        'current' => $current,
+        'scope' => 'all',
+        'kode_cabang' => '',
+        'kode_unit' => '',
+        'korwil_unit' => '',
+        'range_from' => '',
+        'range_to' => ''
+    );
+
+    $korwilMap = array(
+        '__korwil_semarang' => array('unit' => '000001', 'from' => '001', 'to' => '007'),
+        '__korwil_solo' => array('unit' => '000002', 'from' => '008', 'to' => '014'),
+        '__korwil_banyumas' => array('unit' => '000003', 'from' => '015', 'to' => '021'),
+        '__korwil_pekalongan' => array('unit' => '000004', 'from' => '022', 'to' => '028'),
+    );
+
+    if ($current === '__pusat') {
+        $profile['scope'] = 'pusat';
+        $profile['kode_unit'] = '000000';
+        return $profile;
+    }
+
+    if (isset($korwilMap[$current])) {
+        $profile['scope'] = 'korwil';
+        $profile['kode_unit'] = $korwilMap[$current]['unit'];
+        $profile['korwil_unit'] = $korwilMap[$current]['unit'];
+        $profile['range_from'] = $korwilMap[$current]['from'];
+        $profile['range_to'] = $korwilMap[$current]['to'];
+        return $profile;
+    }
+
+    if (strpos($current, 'cabang:') === 0) {
+        $profile['scope'] = 'cabang';
+        $profile['kode_cabang'] = substr($current, 7, 3);
+        return $profile;
+    }
+
+    if (strpos($current, 'unit:') === 0) {
+        $kodeUnit = substr($current, 5, 6);
+        $profile['kode_unit'] = $kodeUnit;
+
+        if ($kodeUnit === '000000') {
+            $profile['scope'] = 'pusat';
+            return $profile;
+        }
+
+        foreach ($korwilMap as $item) {
+            if ($kodeUnit === $item['unit']) {
+                $profile['scope'] = 'korwil';
+                $profile['korwil_unit'] = $item['unit'];
+                $profile['range_from'] = $item['from'];
+                $profile['range_to'] = $item['to'];
+                return $profile;
+            }
+        }
+
+        $profile['scope'] = 'cabang';
+        $profile['kode_cabang'] = substr($kodeUnit, 0, 3);
+        return $profile;
+    }
+
+    return $profile;
+}
+
+function simpeg_dashboard_filter_clause($conn, $unitColumn = 'j.unit_kerja') {
+    $profile = simpeg_dashboard_filter_profile($conn);
+    $current = $profile['current'];
+
+    if ($current === '__all') {
+        return '';
+    }
+
+    if ($current === '__pusat') {
+        return " AND {$unitColumn} = '000000' ";
+    }
+
+    if ($profile['scope'] === 'korwil') {
+        $unit = mysqli_real_escape_string($conn, $profile['korwil_unit']);
+        $from = mysqli_real_escape_string($conn, $profile['range_from']);
+        $to = mysqli_real_escape_string($conn, $profile['range_to']);
+        return " AND ({$unitColumn} = '{$unit}' OR LEFT({$unitColumn}, 3) BETWEEN '{$from}' AND '{$to}') ";
+    }
+
+    if ($profile['scope'] === 'cabang' && $profile['kode_cabang'] !== '') {
+        return " AND LEFT({$unitColumn}, 3) = '" . mysqli_real_escape_string($conn, $profile['kode_cabang']) . "' ";
+    }
+
+    if (strpos($current, 'unit:') === 0) {
+        $kode_kantor = substr($current, 5, 6);
+        return " AND {$unitColumn} = '" . mysqli_real_escape_string($conn, $kode_kantor) . "' ";
+    }
+
+    return '';
+}
+
+function simpeg_dashboard_position_clause($conn, $unitColumn = 'j.unit_kerja') {
+    $profile = simpeg_dashboard_filter_profile($conn);
+
+    if ($profile['scope'] === 'all') {
+        return '';
+    }
+
+    if ($profile['scope'] === 'pusat' && $profile['kode_unit'] !== '') {
+        return " AND {$unitColumn} = '" . mysqli_real_escape_string($conn, $profile['kode_unit']) . "' ";
+    }
+
+    if ($profile['scope'] === 'korwil' && $profile['korwil_unit'] !== '') {
+        return " AND {$unitColumn} = '" . mysqli_real_escape_string($conn, $profile['korwil_unit']) . "' ";
+    }
+
+    if ($profile['scope'] === 'cabang') {
+        if ($profile['kode_cabang'] !== '') {
+            return " AND LEFT({$unitColumn}, 3) = '" . mysqli_real_escape_string($conn, $profile['kode_cabang']) . "' ";
+        }
+
+        if ($profile['kode_unit'] !== '') {
+            return " AND {$unitColumn} = '" . mysqli_real_escape_string($conn, $profile['kode_unit']) . "' ";
+        }
+    }
+
+    return '';
+}
+
+function simpeg_dashboard_master_lingkup_clause($conn, $column = 'm.lingkup') {
+    $profile = simpeg_dashboard_filter_profile($conn);
+
+    if ($profile['scope'] === 'pusat') {
+        return " AND {$column} = 'KP' ";
+    }
+
+    if ($profile['scope'] === 'korwil') {
+        return " AND {$column} = 'KANWIL' ";
+    }
+
+    if ($profile['scope'] === 'cabang') {
+        return " AND {$column} = 'KC' ";
+    }
+
+    return '';
+}
+
+function simpeg_dashboard_filter_options($conn) {
+    $selected = simpeg_dashboard_filter_current($conn);
+    $html = '';
+
+    $items = array(
+        '__all' => 'Konsolidasi',
+        '__pusat' => 'Pusat (000)',
+        '__korwil_semarang' => 'Korwil Semarang (001 - 007)',
+        '__korwil_solo' => 'Korwil Solo (008 - 014)',
+        '__korwil_banyumas' => 'Korwil Banyumas (015 - 021)',
+        '__korwil_pekalongan' => 'Korwil Pekalongan (022 - 028)',
+    );
+
+    foreach ($items as $value => $label) {
+        $sel = ($selected === $value) ? ' selected' : '';
+        $html .= '<option value="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"' . $sel . '>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</option>';
+    }
+
+    $qCabang = mysqli_query($conn, "SELECT kode_cabang, kode_kantor_detail, nama_kantor FROM tb_kantor WHERE level='KC' ORDER BY kode_cabang ASC");
+    if ($qCabang && mysqli_num_rows($qCabang) > 0) {
+        while ($row = mysqli_fetch_assoc($qCabang)) {
+            $value = 'cabang:' . $row['kode_cabang'];
+            $label = $row['kode_cabang'] . ' - ' . $row['nama_kantor'];
+            $sel = ($selected === $value) ? ' selected' : '';
+            $html .= '<option value="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"' . $sel . '>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</option>';
+        }
+    }
+
+    return $html;
+}
+
 function getPage($page) {
   $routes = [
     // Dashboard

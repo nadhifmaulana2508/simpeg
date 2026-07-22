@@ -1,13 +1,23 @@
 <?php
 include "dist/koneksi.php";
+include_once "dist/functions.php";
 
 $jabatan = [];
 $jmlJabatan = [];
 
+$where_unit = simpeg_dashboard_filter_clause($conn, 'j.unit_kerja');
+
 // --- 1. AMAN DARI SQL INJECTION ---
 // Query ini aman karena tidak menerima input user ($_POST/$_GET).
 // Tapi kita pastikan error database tidak bocor ke user (Silent Error).
-$sql = "SELECT jabatan, COUNT(*) as total FROM tb_jabatan GROUP BY jabatan ORDER BY jabatan ASC";
+$sql = "SELECT j.jabatan, COUNT(DISTINCT p.id_peg) as total
+        FROM tb_jabatan j
+        JOIN tb_pegawai p ON p.id_peg = j.id_peg
+        WHERE p.status_aktif = 1
+        AND j.status_jab = 'Aktif'
+        $where_unit
+        GROUP BY j.jabatan
+        ORDER BY j.jabatan ASC";
 $hasil = mysqli_query($conn, $sql);
 
 if (!$hasil) {
@@ -76,95 +86,99 @@ if (!$hasil) {
   </div>
 </div>
 
-<script src="plugins/chart.js/Chart.min.js"></script> 
-
 <script>
-// Pastikan DOM sudah load sebelum script jalan
-document.addEventListener('DOMContentLoaded', function () {
-  
-  var chartCanvas = document.getElementById('barChartJabatan');
-  
-  // Cek apakah canvas ada (mencegah error console jika elemen tidak ketemu)
-  if (chartCanvas) {
-      var ctx = chartCanvas.getContext('2d');
+(function () {
+  function initBarJabatanChart() {
+    var chartCanvas = document.getElementById('barChartJabatan');
+    
+    if (chartCanvas && typeof Chart !== 'undefined') {
+        if (chartCanvas._chartInstance) {
+            chartCanvas._chartInstance.destroy();
+        }
 
-      // Gradient Warna Modern
-      var gradient = ctx.createLinearGradient(0, 0, 0, 400);
-      gradient.addColorStop(0, 'rgba(60, 141, 188, 0.9)'); // Warna AdminLTE Utama
-      gradient.addColorStop(1, 'rgba(60, 141, 188, 0.2)'); // Transparan bawah
+        var ctx = chartCanvas.getContext('2d');
+        var gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(60, 141, 188, 0.9)');
+        gradient.addColorStop(1, 'rgba(60, 141, 188, 0.2)');
+        var systemFont = "'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif";
 
-      // Font Stack Offline (System Fonts)
-      // Ini akan pakai font bawaan Windows/Mac, jadi gak perlu download font Inter lagi
-      var systemFont = "'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif";
-
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: <?= json_encode($jabatan) ?>,
-          datasets: [{
-            label: 'Jumlah Pegawai',
-            data: <?= json_encode($jmlJabatan) ?>,
-            backgroundColor: gradient,
-            borderColor: '#3c8dbc',     
-            borderWidth: 1,
-            borderRadius: 4,          
-            barPercentage: 0.6, 
-            hoverBackgroundColor: '#307095' 
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false,
+        chartCanvas._chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: <?= json_encode($jabatan) ?>,
+            datasets: [{
+              label: 'Jumlah Pegawai',
+              data: <?= json_encode($jmlJabatan) ?>,
+              backgroundColor: gradient,
+              borderColor: '#3c8dbc',     
+              borderWidth: 1,
+              borderRadius: 4,          
+              barPercentage: 0.6, 
+              hoverBackgroundColor: '#307095' 
+            }]
           },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              titleFont: { size: 13, family: systemFont },
-              bodyFont: { size: 13, family: systemFont },
-              padding: 12,
-              cornerRadius: 6,
-              displayColors: false
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: {
-                color: '#f4f6f9',     
-                borderDash: [3, 3],   
-                drawBorder: false
-              },
-              ticks: {
-                color: '#6c757d',
-                font: { size: 11, family: systemFont },
-                precision: 0 // Biar sumbu Y angkanya bulat (gak ada 1.5 orang)
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleFont: { size: 13, family: systemFont },
+                bodyFont: { size: 13, family: systemFont },
+                padding: 12,
+                cornerRadius: 6,
+                displayColors: false
               }
             },
-            x: {
-              grid: {
-                display: false,
-                drawBorder: false
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: {
+                  color: '#f4f6f9',     
+                  borderDash: [3, 3],   
+                  drawBorder: false
+                },
+                ticks: {
+                  color: '#6c757d',
+                  font: { size: 11, family: systemFont },
+                  precision: 0
+                }
               },
-              ticks: {
-                color: '#6c757d',
-                font: { size: 11, family: systemFont },
-                maxRotation: 45,
-                minRotation: 0,
-                autoSkip: true,
-                maxTicksLimit: 15
+              x: {
+                grid: {
+                  display: false,
+                  drawBorder: false
+                },
+                ticks: {
+                  color: '#6c757d',
+                  font: { size: 11, family: systemFont },
+                  maxRotation: 45,
+                  minRotation: 0,
+                  autoSkip: true,
+                  maxTicksLimit: 15
+                }
               }
+            },
+            animation: {
+              duration: 1500,
+              easing: 'easeOutQuart'
             }
-          },
-          animation: {
-            duration: 1500,
-            easing: 'easeOutQuart'
           }
-        }
-      });
+        });
+    }
   }
-});
+
+  if (document.readyState === 'complete') {
+    setTimeout(initBarJabatanChart, 0);
+  } else {
+    window.addEventListener('load', initBarJabatanChart, { once: true });
+  }
+
+  document.addEventListener('simpeg:dashboard-refresh', initBarJabatanChart);
+})();
 </script>

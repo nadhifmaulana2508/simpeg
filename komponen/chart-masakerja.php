@@ -1,18 +1,9 @@
 <?php
 // --- LOGIKA PHP (SERVER SIDE) ---
 include "dist/koneksi.php";
+include_once "dist/functions.php";
 
-// 1. Ambil Session & Validasi Keamanan
-$hak_akses = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : '';
-$kode_cabang_session = isset($_SESSION['kode_kantor']) ? $_SESSION['kode_kantor'] : '';
-
-// 2. Filter Unit Kerja (Jika Kepala Cabang)
-$where_unit = '';
-if ($hak_akses === 'kepala') {
-    // Escape string untuk mencegah SQL Injection dari session (jaga-jaga)
-    $unit = mysqli_real_escape_string($conn, $kode_cabang_session);
-    $where_unit = "AND j.unit_kerja = '$unit'";
-}
+$where_unit = simpeg_dashboard_filter_clause($conn, 'j.unit_kerja');
 
 /**
  * Fungsi Hitung Masa Kerja (REVISI: Menggunakan TIMESTAMPDIFF agar akurat)
@@ -172,31 +163,41 @@ $stats = [
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const statCounters = document.querySelectorAll('.counter-stat');
-    statCounters.forEach(counter => {
-        const target = +counter.getAttribute('data-target');
-        
-        // Jika target 0, langsung tampilkan 0
-        if(target === 0) {
-            counter.innerText = "0";
-            return;
-        }
+(function () {
+    function initMasaKerjaCounters() {
+        const statCounters = document.querySelectorAll('#dashboard-content .counter-stat');
+        statCounters.forEach(function (counter) {
+            const target = parseInt(counter.getAttribute('data-target') || '0', 10);
 
-        const duration = 1000; // durasi animasi dalam ms
-        const increment = target / (duration / 16); // 60fps
-        let current = 0;
-        
-        const updateStat = () => {
-            current += increment;
-            if (current < target) {
-                counter.innerText = Math.ceil(current).toLocaleString('id-ID');
-                requestAnimationFrame(updateStat);
-            } else {
-                counter.innerText = target.toLocaleString('id-ID');
+            if (!target || target <= 0) {
+                counter.innerText = '0';
+                return;
             }
-        };
-        updateStat();
-    });
-});
+
+            const duration = 1000;
+            const increment = target / (duration / 16 || 1);
+            let current = 0;
+
+            const updateStat = function () {
+                current += increment;
+                if (current < target) {
+                    counter.innerText = Math.ceil(current).toLocaleString('id-ID');
+                    requestAnimationFrame(updateStat);
+                } else {
+                    counter.innerText = target.toLocaleString('id-ID');
+                }
+            };
+
+            updateStat();
+        });
+    }
+
+    if (document.readyState === 'complete') {
+        setTimeout(initMasaKerjaCounters, 0);
+    } else {
+        window.addEventListener('load', initMasaKerjaCounters, { once: true });
+    }
+
+    document.addEventListener('simpeg:dashboard-refresh', initMasaKerjaCounters);
+})();
 </script>

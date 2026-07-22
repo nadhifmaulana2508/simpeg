@@ -1,15 +1,8 @@
 <?php
 include "dist/koneksi.php";
+include_once "dist/functions.php";
 
-// --- 1. FILTER UNIT KERJA & KEAMANAN ---
-$hak_akses = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : '';
-$kode_cabang_session = isset($_SESSION['kode_kantor']) ? $_SESSION['kode_kantor'] : '';
-
-$where_unit = '';
-if ($hak_akses === 'kepala') {
-    $unit = mysqli_real_escape_string($conn, $kode_cabang_session);
-    $where_unit = "AND j.unit_kerja = '$unit'";
-}
+$where_unit = simpeg_dashboard_filter_clause($conn, 'j.unit_kerja');
 
 // --- 2. QUERY ---
 $sql = "SELECT p.jk, COUNT(DISTINCT p.id_peg) as total 
@@ -109,73 +102,99 @@ $data_chart = "$total_l, $total_p";
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // 1. ANIMASI COUNTER ANGKA (Ditambahkan agar angka bergerak naik)
-    const statCounters = document.querySelectorAll('.counter-value');
-    statCounters.forEach(counter => {
-        const target = +counter.getAttribute('data-target');
-        if(target === 0) { counter.innerText = "0"; return; }
-        
-        const duration = 1000; 
-        const increment = target / (duration / 16); 
-        let current = 0;
-        
-        const updateStat = () => {
-            current += increment;
-            if (current < target) {
-                counter.innerText = Math.ceil(current).toLocaleString('id-ID');
-                requestAnimationFrame(updateStat);
-            } else {
-                counter.innerText = target.toLocaleString('id-ID');
+(function () {
+    function initGenderCounters() {
+        const statCounters = document.querySelectorAll('#dashboard-content .counter-value');
+        statCounters.forEach(function (counter) {
+            const target = parseInt(counter.getAttribute('data-target') || '0', 10);
+            if (!target || target <= 0) {
+                counter.innerText = '0';
+                return;
             }
-        };
-        updateStat();
-    });
 
-    // 2. CHART JS CONFIG
-    var ctx = document.getElementById('doughnutChartJK').getContext('2d');
-    
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Laki-laki', 'Perempuan'], 
-            datasets: [{
-                data: [<?= $data_chart; ?>], 
-                backgroundColor: ['#90CAF9', '#F48FB1'],
-                hoverBackgroundColor: ['#64B5F6', '#F06292'],
-                borderWidth: 0,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%', 
-            plugins: {
-                legend: { display: false }, 
-                tooltip: {
-                    backgroundColor: '#fff',
-                    titleColor: '#555',
-                    bodyColor: '#666',
-                    borderColor: '#eee',
-                    borderWidth: 1,
-                    padding: 12,
-                    callbacks: {
-                        label: function(context) {
-                            var value = context.raw;
-                            // Cegah pembagian dengan nol
-                            var total = <?= ($total_seluruh > 0) ? $total_seluruh : 1 ?>; 
-                            var persen = ((value / total) * 100).toFixed(1) + '%';
-                            return ' ' + context.label + ': ' + value + ' (' + persen + ')';
+            const duration = 1000;
+            const increment = target / (duration / 16 || 1);
+            let current = 0;
+
+            const updateStat = function () {
+                current += increment;
+                if (current < target) {
+                    counter.innerText = Math.ceil(current).toLocaleString('id-ID');
+                    requestAnimationFrame(updateStat);
+                } else {
+                    counter.innerText = target.toLocaleString('id-ID');
+                }
+            };
+
+            updateStat();
+        });
+    }
+
+    function initGenderChart() {
+        var canvas = document.getElementById('doughnutChartJK');
+        if (!canvas || typeof Chart === 'undefined') {
+            return;
+        }
+
+        var ctx = canvas.getContext('2d');
+        if (canvas._chartInstance) {
+            canvas._chartInstance.destroy();
+        }
+
+        canvas._chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Laki-laki', 'Perempuan'], 
+                datasets: [{
+                    data: [<?= $data_chart; ?>], 
+                    backgroundColor: ['#90CAF9', '#F48FB1'],
+                    hoverBackgroundColor: ['#64B5F6', '#F06292'],
+                    borderWidth: 0,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%', 
+                plugins: {
+                    legend: { display: false }, 
+                    tooltip: {
+                        backgroundColor: '#fff',
+                        titleColor: '#555',
+                        bodyColor: '#666',
+                        borderColor: '#eee',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                var value = context.raw;
+                                var total = <?= ($total_seluruh > 0) ? $total_seluruh : 1 ?>; 
+                                var persen = ((value / total) * 100).toFixed(1) + '%';
+                                return ' ' + context.label + ': ' + value + ' (' + persen + ')';
+                            }
                         }
                     }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
                 }
-            },
-            animation: {
-                animateScale: true,
-                animateRotate: true
             }
-        }
-    });
-});
+        });
+    }
+
+    function initGenderSection() {
+        initGenderCounters();
+        initGenderChart();
+    }
+
+    if (document.readyState === 'complete') {
+        setTimeout(initGenderSection, 0);
+    } else {
+        window.addEventListener('load', initGenderSection, { once: true });
+    }
+
+    document.addEventListener('simpeg:dashboard-refresh', initGenderSection);
+})();
 </script>

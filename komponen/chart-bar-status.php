@@ -1,15 +1,8 @@
 <?php
 include_once "dist/koneksi.php";
+include_once "dist/functions.php";
 
-// --- 1. FILTER & SECURITY ---
-$hak_akses = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : '';
-$kode_cabang_session = isset($_SESSION['kode_kantor']) ? $_SESSION['kode_kantor'] : '';
-
-$where_unit = '';
-if ($hak_akses === 'kepala') {
-    $unit = mysqli_real_escape_string($conn, $kode_cabang_session);
-    $where_unit = "AND j.unit_kerja = '$unit'";
-}
+$where_unit = simpeg_dashboard_filter_clause($conn, 'j.unit_kerja');
 
 // --- 2. QUERY RAW DATA ---
 $sql = "SELECT p.status_kepeg, COUNT(DISTINCT p.id_peg) as total 
@@ -90,93 +83,99 @@ foreach ($kategori_final as $label => $nilai) {
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const ctxElement = document.getElementById('chartStatusPeg');
-    
-    // Cek element & Library Chart.js
-    if(ctxElement && typeof Chart !== 'undefined') {
-        const ctx = ctxElement.getContext('2d');
-
-        // Font System (Offline Friendly)
-        const systemFont = "'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif";
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                // Gunakan JSON Encode agar data aman dari error syntax JS
-                labels: <?= json_encode($labels); ?>,
-                datasets: [{
-                    label: 'Jumlah Pegawai',
-                    data: <?= json_encode($values); ?>,
-                    backgroundColor: [
-                        '#81C784', // Tetap (Hijau)
-                        '#64B5F6', // Capeg (Biru)
-                        '#FFD54F', // Kontrak (Kuning)
-                        '#E57373', // Outsource (Merah)
-                        '#BA68C8'  // Lainnya (Ungu)
-                    ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                
-                // --- KONFIGURASI CHART.JS V2 (Anti Undefined) ---
-                legend: { 
-                    display: false // Hide legend di sini (root options)
-                },
-                tooltips: {
-                    mode: 'index',      // Tooltip pintar
-                    intersect: false,   // Gak perlu pas kena batang
-                    backgroundColor: '#fff',
-                    titleFontColor: '#555',
-                    titleFontFamily: systemFont,
-                    bodyFontColor: '#666',
-                    bodyFontFamily: systemFont,
-                    borderColor: '#f0f0f0',
-                    borderWidth: 1,
-                    xPadding: 10,
-                    yPadding: 10,
-                    cornerRadius: 6,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(tooltipItem, data) {
-                             // Logic ambil data v2
-                             var value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
-                             return ' Total: ' + value + ' Pegawai';
-                        }
-                    }
-                },
-                scales: {
-                    yAxes: [{ // Pakai yAxes (Array) bukan y
-                        ticks: {
-                            beginAtZero: true,
-                            precision: 0,
-                            fontFamily: systemFont,
-                            fontSize: 10
-                        },
-                        gridLines: {
-                            borderDash: [5, 5],
-                            drawBorder: false,
-                            color: '#f2f2f2'
-                        }
-                    }],
-                    xAxes: [{ // Pakai xAxes (Array) bukan x
-                        gridLines: {
-                            display: false
-                        },
-                        ticks: {
-                            fontFamily: systemFont,
-                            fontSize: 10
-                        },
-                        // Bikin batang lebih gemuk (v2 style)
-                        barPercentage: 0.7,
-                        categoryPercentage: 0.8
-                    }]
-                }
+(function () {
+    function initStatusChart() {
+        const ctxElement = document.getElementById('chartStatusPeg');
+        
+        if(ctxElement && typeof Chart !== 'undefined') {
+            if (ctxElement._chartInstance) {
+                ctxElement._chartInstance.destroy();
             }
-        });
+
+            const ctx = ctxElement.getContext('2d');
+            const systemFont = "'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif";
+
+            ctxElement._chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: <?= json_encode($labels); ?>,
+                    datasets: [{
+                        label: 'Jumlah Pegawai',
+                        data: <?= json_encode($values); ?>,
+                        backgroundColor: [
+                            '#81C784',
+                            '#64B5F6',
+                            '#FFD54F',
+                            '#E57373',
+                            '#BA68C8'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: { 
+                        display: false
+                    },
+                    tooltips: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#fff',
+                        titleFontColor: '#555',
+                        titleFontFamily: systemFont,
+                        bodyFontColor: '#666',
+                        bodyFontFamily: systemFont,
+                        borderColor: '#f0f0f0',
+                        borderWidth: 1,
+                        xPadding: 10,
+                        yPadding: 10,
+                        cornerRadius: 6,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                 var value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+                                 return ' Total: ' + value + ' Pegawai';
+                            }
+                        }
+                    },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                precision: 0,
+                                fontFamily: systemFont,
+                                fontSize: 10
+                            },
+                            gridLines: {
+                                borderDash: [5, 5],
+                                drawBorder: false,
+                                color: '#f2f2f2'
+                            }
+                        }],
+                        xAxes: [{
+                            gridLines: {
+                                display: false
+                            },
+                            ticks: {
+                                fontFamily: systemFont,
+                                fontSize: 10
+                            },
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.8
+                        }]
+                    }
+                }
+            });
+        }
     }
-});
+
+    if (document.readyState === 'complete') {
+        setTimeout(initStatusChart, 0);
+    } else {
+        window.addEventListener('load', initStatusChart, { once: true });
+    }
+
+    document.addEventListener('simpeg:dashboard-refresh', initStatusChart);
+})();
 </script>

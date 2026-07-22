@@ -1,40 +1,39 @@
 <?php
-// komponen/dashboard-filter.php
-include '../dist/koneksi.php';
-
-$unit = isset($_GET['unit_kerja']) ? $_GET['unit_kerja'] : '';
-
-// Pastikan variabel unit terbawa ke semua komponen yang di-include
-// Statistik Box
-include 'statistik-box.php';
-
-// Grafik Masa Kerja
-include 'chart-masakerja.php';
-
-// Baris grafik kiri & kanan
+include 'dist/koneksi.php';
+include_once 'dist/functions.php';
 ?>
-<div class="row">
-  <div class="col-md-6">
-    <?php $unit = $unit; include 'chart-pie-jk.php'; ?>
-    <?php $unit = $unit; include 'chart-bar-status.php'; ?>
+
+<?php include 'komponen/statistik-box.php'; ?>
+
+<?php include 'komponen/chart-masakerja.php'; ?>
+
+<div class="row match-height">
+  <div class="col-lg-5 col-md-12 mb-4">
+    <?php include 'komponen/chart-pie-jk.php'; ?>
   </div>
-  <div class="col-md-6">
-    <?php $unit = $unit; include 'chart-bar-pendidikan.php'; ?>
-    <?php $unit = $unit; include 'chart-line-pelanggaran.php'; ?>
+  <div class="col-lg-7 col-md-12 mb-4">
+    <?php include 'komponen/chart-bar-pendidikan.php'; ?>
   </div>
 </div>
-<?php
-// Grafik Jabatan
-include 'chart-bar-jabatan.php';
 
-// Tabel Pensiun dan Keterisian Jabatan
-include 'tabel-pensiun.php';
-?>
-<div class="row">
-  <div class="col-md-6">
-    <?php $unit = $unit; include 'tabel-keterisian-eksekutif.php'; ?>
+<div class="row match-height">
+  <div class="col-md-6 mb-4">
+    <?php include 'komponen/chart-bar-status.php'; ?>
   </div>
-  <div class="col-md-6">
-    <?php $unit = $unit; include 'tabel-keterisian-struktural.php'; ?>
+  <div class="col-md-6 mb-4">
+    <?php include 'komponen/chart-line-pelanggaran.php'; ?>
+  </div>
+</div>
+
+<?php include 'komponen/chart-bar-jabatan.php'; ?>
+
+<?php include 'komponen/tabel-pensiun.php'; ?>
+
+<div class="row match-height">
+  <div class="col-md-6 mb-4">
+    <?php include 'komponen/tabel-keterisian-eksekutif.php'; ?>
+  </div>
+  <div class="col-md-6 mb-4">
+    <?php include 'komponen/tabel-keterisian-struktural.php'; ?>
   </div>
 </div>

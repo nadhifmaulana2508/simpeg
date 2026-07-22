@@ -1,19 +1,25 @@
 <?php
 include "dist/koneksi.php";
+include_once "dist/functions.php";
 
-// QUERY: Tetap sama
+$where_unit = simpeg_dashboard_position_clause($conn, 'j.unit_kerja');
+$where_lingkup = simpeg_dashboard_master_lingkup_clause($conn, 'm.lingkup');
+
 $query = mysqli_query($conn, "
   SELECT 
     m.kode_jabatan,
     m.nama_jabatan,
     m.kuota,
-    COUNT(j.id_jab) AS jml
+    COUNT(DISTINCT p.id_peg) AS jml
   FROM tb_master_jabatan m
   LEFT JOIN tb_jabatan j 
-    ON m.nama_jabatan = j.jabatan AND j.status_jab = 'Aktif'
+    ON m.nama_jabatan = j.jabatan
+    AND j.status_jab = 'Aktif'
+    $where_unit
   LEFT JOIN tb_pegawai p 
     ON j.id_peg = p.id_peg AND p.status_aktif = 1
   WHERE m.group_jabatan = 'PE'
+    $where_lingkup
   GROUP BY m.kode_jabatan, m.nama_jabatan, m.kuota
   ORDER BY m.kode_jabatan ASC
 ");
@@ -147,6 +153,52 @@ $query = mysqli_query($conn, "
 }
 .page-item:not(.active) .page-link:hover { background-color: #e0f2fe !important; color: #0ea5e9 !important; transform: translateY(-2px); }
 .page-item.active .page-link { background: #0ea5e9 !important; color: #fff !important; box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3) !important; }
+
+@media (max-width: 991.98px) {
+  .card-modern .card-header {
+    padding: 20px 16px;
+    align-items: stretch;
+  }
+  .title-group h3 {
+    font-size: 1.15rem;
+  }
+  .title-group p {
+    font-size: 0.82rem;
+  }
+  .header-search {
+    width: 100%;
+    margin-left: 0;
+  }
+  .header-search input {
+    height: 42px;
+    font-size: 0.9rem;
+  }
+  .table-modern thead th,
+  .table-modern tbody td {
+    padding: 16px 14px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .table-modern thead th {
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+  .table-modern tbody td {
+    font-size: 0.9rem;
+    padding: 14px 12px;
+  }
+  .badge-soft {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+  .page-item .page-link {
+    width: 36px;
+    height: 36px;
+    margin-left: 6px;
+    font-size: 0.82rem;
+  }
+}
 </style>
 
 <div class="card card-modern">
@@ -203,37 +255,46 @@ $query = mysqli_query($conn, "
   </div>
 </div>
 
-<script src="plugins/jquery/jquery.min.js"></script>
-<script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="plugins/datatables/jquery.dataTables.min.js"></script>
-<script src="plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
-
 <script>
-  $(document).ready(function () {
-    if ($.fn.DataTable.isDataTable('#tabelEksekutif')) {
-      $('#tabelEksekutif').DataTable().destroy();
+  (function () {
+    function initEksekutifTable() {
+      if (typeof $ === 'undefined' || !$.fn.DataTable) {
+        return;
+      }
+
+      if ($.fn.DataTable.isDataTable('#tabelEksekutif')) {
+        $('#tabelEksekutif').DataTable().destroy();
+      }
+
+      var table = $('#tabelEksekutif').DataTable({
+        dom: 'tp', 
+        paging: true,
+        pageLength: 5,
+        responsive: true,
+        autoWidth: false, 
+        ordering: true,
+        lengthChange: false,
+        info: false,
+        language: {
+          zeroRecords: 'Tidak ada data jabatan ditemukan',
+          paginate: { next: '<i class="fas fa-chevron-right"></i>', previous: '<i class="fas fa-chevron-left"></i>' }
+        },
+        drawCallback: function() {
+          $('.dataTables_paginate > .pagination').addClass('justify-content-end');
+        }
+      });
+
+      $('#searchEksekutif').off('keyup.simpeg').on('keyup.simpeg', function() {
+        table.search(this.value).draw();
+      });
     }
 
-    var table = $('#tabelEksekutif').DataTable({
-      dom: 'tp', 
-      paging: true,
-      pageLength: 5,
-      responsive: true,
-      autoWidth: false, 
-      ordering: true,
-      lengthChange: false,
-      info: false,
-      language: {
-        zeroRecords: 'Tidak ada data jabatan ditemukan',
-        paginate: { next: '<i class="fas fa-chevron-right"></i>', previous: '<i class="fas fa-chevron-left"></i>' }
-      },
-      drawCallback: function() {
-        $('.dataTables_paginate > .pagination').addClass('justify-content-end');
-      }
-    });
+    if (document.readyState === 'complete') {
+      setTimeout(initEksekutifTable, 0);
+    } else {
+      window.addEventListener('load', initEksekutifTable, { once: true });
+    }
 
-    $('#searchEksekutif').on('keyup', function() {
-      table.search(this.value).draw();
-    });
-  });
+    document.addEventListener('simpeg:dashboard-refresh', initEksekutifTable);
+  })();
 </script>

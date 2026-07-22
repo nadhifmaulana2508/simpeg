@@ -7,8 +7,10 @@ if (!defined('BASEPATH') && strpos($_SERVER['SCRIPT_NAME'], basename(__FILE__)) 
 
 include "dist/koneksi.php";
 include "dist/library.php";
+include_once "dist/functions.php";
 
 $tahun = date('Y');
+$where_unit = simpeg_dashboard_filter_clause($conn, 'j.unit_kerja');
 
 // Improved Query: Logic remains, but formatted for readability.
 // Note: Since this query uses no external user input variables, prepared statements 
@@ -16,12 +18,16 @@ $tahun = date('Y');
 $query_sql = "
   SELECT 
     a.id_peg, a.nama, a.jk, a.foto, a.tempat_lhr, a.tgl_pensiun,
-    (SELECT jabatan FROM tb_jabatan WHERE id_peg=a.id_peg AND status_jab='Aktif' LIMIT 1) AS jabatan,
+    j.jabatan,
     DATEDIFF(a.tgl_pensiun, CURDATE()) AS selisih_hari
   FROM tb_pegawai a
+  LEFT JOIN tb_jabatan j
+    ON a.id_peg = j.id_peg
+    AND j.status_jab = 'Aktif'
   WHERE 
     a.id_peg NOT IN ('101-001','101-002','101-003','101-004','101-005','101-007','101-008')
     AND YEAR(a.tgl_pensiun) = YEAR(NOW())
+    $where_unit
   ORDER BY
     CASE
       WHEN DATEDIFF(a.tgl_pensiun, CURDATE()) BETWEEN 0 AND 30 THEN 1
@@ -128,9 +134,6 @@ function e($string) {
 }
 </style>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
-
 <div class="card card-modern">
   <div class="card-header">
     <div class="title-group">
@@ -214,40 +217,46 @@ function e($string) {
   </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
-
 <script>
-$(function(){
-  // Check if DataTable exists and destroy it safely
-  if ($.fn.DataTable.isDataTable('#tabelPensiun')) { 
-      $('#tabelPensiun').DataTable().destroy(); 
+(function () {
+  function initTabelPensiun() {
+    if (typeof $ === 'undefined' || !$.fn.DataTable) {
+      return;
+    }
+
+    if ($.fn.DataTable.isDataTable('#tabelPensiun')) { 
+        $('#tabelPensiun').DataTable().destroy(); 
+    }
+
+    var table = $('#tabelPensiun').DataTable({
+      dom: 'tp',
+      paging: true,
+      pageLength: 5,
+      ordering: true,
+      autoWidth: false,
+      info: false,
+      order: [],
+      columnDefs: [{ orderable: false, targets: [0, 2, 4] }],
+      language: {
+        zeroRecords: 'Tidak ada data ditemukan',
+        paginate: { next: '<i class="fas fa-chevron-right"></i>', previous: '<i class="fas fa-chevron-left"></i>' }
+      },
+      drawCallback: function() {
+        $('.dataTables_paginate > .pagination').addClass('justify-content-end');
+      }
+    });
+
+    $('#customSearch').off('keyup.simpeg').on('keyup.simpeg', function(){
+      table.search(this.value).draw();
+    });
   }
 
-  var table = $('#tabelPensiun').DataTable({
-    dom: 'tp', // Only Show Table (t) and Pagination (p)
-    paging: true,
-    pageLength: 5,
-    ordering: true,
-    autoWidth: false,
-    info: false,
-    order: [], // Disable initial sort
-    columnDefs: [{ orderable: false, targets: [0, 2, 4] }], // Disable sorting on Photo, Status, Countdown
-    language: {
-      zeroRecords: 'Tidak ada data ditemukan',
-      paginate: { next: '<i class="fas fa-chevron-right"></i>', previous: '<i class="fas fa-chevron-left"></i>' }
-    },
-    drawCallback: function() {
-      // Ensure right alignment for pagination
-      $('.dataTables_paginate > .pagination').addClass('justify-content-end');
-    }
-  });
+  if (document.readyState === 'complete') {
+    setTimeout(initTabelPensiun, 0);
+  } else {
+    window.addEventListener('load', initTabelPensiun, { once: true });
+  }
 
-  // Custom Search Integration
-  $('#customSearch').on('keyup', function(){
-    table.search(this.value).draw();
-  });
-});
+  document.addEventListener('simpeg:dashboard-refresh', initTabelPensiun);
+})();
 </script>

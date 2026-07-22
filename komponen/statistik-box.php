@@ -1,17 +1,9 @@
 <?php
 // --- BAGIAN 1: LOGIKA PHP (SERVER SIDE) ---
 include "dist/koneksi.php";
+include_once "dist/functions.php";
 
-// Cek Session
-$hak_akses = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : '';
-$kode_cabang_session = isset($_SESSION['kode_kantor']) ? $_SESSION['kode_kantor'] : '';
-
-// Filter Query (Unit Kerja)
-$where_unit = '';
-if ($hak_akses === 'kepala') {
-    $unit = mysqli_real_escape_string($conn, $kode_cabang_session);
-    $where_unit = "AND j.unit_kerja = '$unit'";
-}
+$where_unit = simpeg_dashboard_filter_clause($conn, 'j.unit_kerja');
 
 // Inisialisasi Variabel
 $jmlpegawai = 0;
@@ -196,26 +188,77 @@ if ($diklat && $row = mysqli_fetch_assoc($diklat)) $jmldiklat = $row['total'];
         to { opacity: 1; transform: translate3d(0, 0, 0); }
     }
     .animate-fade-up { animation-fill-mode: both; animation-duration: 0.8s; animation-name: fadeInUp; }
+
+    @media (max-width: 767.98px) {
+        .card-hover {
+            border-radius: 16px !important;
+        }
+        .card-hover .card-body {
+            padding: 1rem !important;
+        }
+        .icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+        .card-hover h2 {
+            font-size: 1.7rem;
+        }
+        .card-hover h6 {
+            font-size: 0.64rem;
+            letter-spacing: 0.08em;
+        }
+        .action-link {
+            font-size: 0.78rem !important;
+        }
+        .shape-bg {
+            width: 62px;
+            height: 62px;
+            right: -14px;
+            bottom: -14px;
+        }
+        .card-hover .mb-3 {
+            margin-bottom: 0.7rem !important;
+        }
+    }
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const counters = document.querySelectorAll('.counter-value');
-    counters.forEach(counter => {
-        const target = +counter.getAttribute('data-target');
-        const duration = 1500; 
-        const increment = target / (duration / 16);
-        let current = 0;
-        const updateCounter = () => {
-            current += increment;
-            if (current < target) {
-                counter.innerText = Math.ceil(current).toLocaleString('id-ID');
-                requestAnimationFrame(updateCounter);
-            } else {
-                counter.innerText = target.toLocaleString('id-ID');
+(function () {
+    function initStatistikBox() {
+        const counters = document.querySelectorAll('#dashboard-content .counter-value');
+        counters.forEach(function (counter) {
+            const target = parseInt(counter.getAttribute('data-target') || '0', 10);
+            const duration = 1500;
+            const increment = target / (duration / 16 || 1);
+            let current = 0;
+
+            if (!target || target <= 0) {
+                counter.innerText = '0';
+                return;
             }
-        };
-        updateCounter();
-    });
-});
+
+            const updateCounter = function () {
+                current += increment;
+                if (current < target) {
+                    counter.innerText = Math.ceil(current).toLocaleString('id-ID');
+                    requestAnimationFrame(updateCounter);
+                } else {
+                    counter.innerText = target.toLocaleString('id-ID');
+                }
+            };
+
+            updateCounter();
+        });
+    }
+
+    if (document.readyState === 'complete') {
+        setTimeout(initStatistikBox, 0);
+    } else {
+        window.addEventListener('load', initStatistikBox, { once: true });
+    }
+
+    document.addEventListener('simpeg:dashboard-refresh', initStatistikBox);
+})();
 </script>
