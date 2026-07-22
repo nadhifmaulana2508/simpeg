@@ -13,6 +13,42 @@ include('../../dist/functions.php');
 function postv($key, $def='') { return isset($_POST[$key]) ? trim($_POST[$key]) : $def; }
 function clean_str($conn, $s){ return mysqli_real_escape_string($conn, trim($s)); }
 function ensure_dir($path){ if (!is_dir($path)) { @mkdir($path, 0775, true); } }
+function table_columns($conn, $table){
+  static $cache = array();
+  if (isset($cache[$table])) { return $cache[$table]; }
+  $cols = array();
+  $res = mysqli_query($conn, "SHOW COLUMNS FROM `".$table."`");
+  if ($res) {
+    while ($row = mysqli_fetch_assoc($res)) {
+      $cols[$row['Field']] = true;
+    }
+  }
+  $cache[$table] = $cols;
+  return $cols;
+}
+function has_col($cols, $name){ return isset($cols[$name]); }
+function sql_val($value){ return "'".$value."'"; }
+function build_insert_query($table, $data, $allowedCols){
+  $fields = array();
+  $values = array();
+  foreach ($data as $col => $val) {
+    if (!has_col($allowedCols, $col)) { continue; }
+    $fields[] = "`".$col."`";
+    $values[] = sql_val($val);
+  }
+  return "INSERT INTO `".$table."` (".implode(', ', $fields).") VALUES (".implode(', ', $values).")";
+}
+function build_update_query($table, $data, $allowedCols, $whereSql){
+  $sets = array();
+  foreach ($data as $col => $val) {
+    if (!has_col($allowedCols, $col)) { continue; }
+    $sets[] = "`".$col."`=".sql_val($val);
+  }
+  return "UPDATE `".$table."` SET ".implode(', ', $sets)." ".$whereSql;
+}
+function app_log($message){
+  error_log('[SIMPEG save pegawai] '.$message);
+}
 
 // [FIX] Fungsi untuk generate UUID (v4)
 function gen_uuid() {
@@ -29,6 +65,8 @@ $user       = isset($_SESSION['id_user']) ? $_SESSION['id_user'] : 'admin';
 $hak_akses  = isset($_SESSION['hak_akses']) ? strtolower($_SESSION['hak_akses']) : 'user';
 $tanggal    = date('Y-m-d');
 $status     = 'gagal'; 
+$pegawaiCols = table_columns($conn, 'tb_pegawai');
+$userCols    = table_columns($conn, 'tb_user');
 
 /* ==========================================================
  * 1) MODE KOLEKTIF (JSON)
@@ -90,19 +128,38 @@ if ($mode == 'tambah') {
     // [FIX] Generate UID baru
     $uid_baru = gen_uuid();
 
-    // [FIX] Insert query menyertakan pegawai_uid
-    $sql = "INSERT INTO tb_pegawai (
-      pegawai_uid, id_peg, nip, nama, tempat_lhr, tgl_lhr, agama, jk, gol_darah, status_nikah,
-      status_kepeg, alamat, telp, email, bpjstk, bpjskes, foto, status_aktif, date_reg, created_by
-    ) VALUES (
-      '$uid_baru', '$id_peg', '$nip', '$nama', '$tempat_lhr', '$tgl_lhr', '$agama', '$jk', '$gol_darah', '$status_nikah',
-      '$status_kepeg', '$alamat', '$telp', '$email', '$bpjstk', '$bpjskes', '$foto_name', '1', '$tanggal', '$user'
-    )";
+    $insertData = array(
+      'pegawai_uid'   => $uid_baru,
+      'id_peg'        => $id_peg,
+      'nip'           => $nip,
+      'nama'          => $nama,
+      'tempat_lhr'    => $tempat_lhr,
+      'tgl_lhr'       => $tgl_lhr,
+      'agama'         => $agama,
+      'jk'            => $jk,
+      'gol_darah'     => $gol_darah,
+      'status_nikah'  => $status_nikah,
+      'status_kepeg'  => $status_kepeg,
+      'alamat'        => $alamat,
+      'telp'          => $telp,
+      'email'         => $email,
+      'bpjstk'        => $bpjstk,
+      'bpjskes'       => $bpjskes,
+      'foto'          => $foto_name,
+      'status_aktif'  => '1',
+      'date_reg'      => $tanggal,
+      'created_by'    => $user
+    );
+    if (has_col($pegawaiCols, 'created_at')) {
+      $insertData['created_at'] = date('Y-m-d H:i:s');
+    }
+    $sql = build_insert_query('tb_pegawai', $insertData, $pegawaiCols);
 
     if (mysqli_query($conn, $sql)) {
       @sinkron_user_dari_pegawai($id_peg);
       $status = 'sukses';
     } else {
+      app_log('insert gagal untuk ID '.$id_peg.' | '.mysqli_error($conn).' | SQL: '.$sql);
       $status = 'gagal';
     }
   }
@@ -123,25 +180,46 @@ else if ($mode == 'edit') {
   
   // Jika Admin/Kepala edit -> Langsung Update
   else {
-    $sql = "UPDATE tb_pegawai SET
-      nip='$nip', nama='$nama', tempat_lhr='$tempat_lhr', tgl_lhr='$tgl_lhr',
-      agama='$agama', jk='$jk', gol_darah='$gol_darah', status_nikah='$status_nikah',
-      status_kepeg='$status_kepeg', alamat='$alamat', telp='$telp', email='$email',
-      bpjstk='$bpjstk', bpjskes='$bpjskes', updated_at=NOW(), updated_by='$user'";
-    
-    if (!empty($foto_name)) { $sql .= ", foto='$foto_name'"; }
-    $sql .= " WHERE id_peg='$id_peg'";
+    $updateData = array(
+      'nip'           => $nip,
+      'nama'          => $nama,
+      'tempat_lhr'    => $tempat_lhr,
+      'tgl_lhr'       => $tgl_lhr,
+      'agama'         => $agama,
+      'jk'            => $jk,
+      'gol_darah'     => $gol_darah,
+      'status_nikah'  => $status_nikah,
+      'status_kepeg'  => $status_kepeg,
+      'alamat'        => $alamat,
+      'telp'          => $telp,
+      'email'         => $email,
+      'bpjstk'        => $bpjstk,
+      'bpjskes'       => $bpjskes,
+      'updated_by'    => $user,
+      'date_modify'   => $tanggal
+    );
+    if (has_col($pegawaiCols, 'updated_at')) {
+      $updateData['updated_at'] = date('Y-m-d H:i:s');
+    }
+    if (!empty($foto_name)) {
+      $updateData['foto'] = $foto_name;
+    }
+    $sql = build_update_query('tb_pegawai', $updateData, $pegawaiCols, "WHERE id_peg='$id_peg'");
 
     if (mysqli_query($conn, $sql)) {
         // FIX BUG AKUN: Kembalikan hak akses & status aktif ke nilai semula
-        $sqlUser = "UPDATE tb_user SET 
-                    hak_akses='$hak_akses_akun', 
-                    status_aktif='$status_aktif_akun' 
-                    WHERE id_pegawai='$id_peg'";
-        mysqli_query($conn, $sqlUser);
+        $sqlUser = build_update_query('tb_user', array(
+                    'hak_akses'   => $hak_akses_akun,
+                    'status_aktif'=> $status_aktif_akun,
+                    'updated_by'  => $user
+                  ), $userCols, "WHERE id_pegawai='$id_peg'");
+        if (!empty($sqlUser) && strpos($sqlUser, ' SET ') !== false) {
+          mysqli_query($conn, $sqlUser);
+        }
 
         $status = 'sukses';
     } else {
+      app_log('update gagal untuk ID '.$id_peg.' | '.mysqli_error($conn).' | SQL: '.$sql);
       $status = 'gagal';
     }
   }
