@@ -181,7 +181,20 @@
     body.addEventListener('submit', function (event) {
       var form = event.target;
       if (!form || form.dataset.noLoading === 'true') return;
-      showLoader('Menyimpan data...');
+
+      window.setTimeout(function () {
+        var invalid = false;
+        if (typeof form.checkValidity === 'function') {
+          invalid = !form.checkValidity();
+        }
+
+        if (event.defaultPrevented || invalid) {
+          hideLoader();
+          return;
+        }
+
+        showLoader('Menyimpan data...');
+      }, 0);
     }, true);
 
     if (

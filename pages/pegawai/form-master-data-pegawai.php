@@ -301,6 +301,13 @@ if(isset($_SESSION['id_pegawai']) && $_SESSION['id_pegawai'] == $id_peg){
           if (form.checkValidity() === false) {
             event.preventDefault();
             event.stopPropagation();
+            if (window.SimpegUI && typeof window.SimpegUI.hideLoader === 'function') {
+              window.SimpegUI.hideLoader();
+            }
+            var firstInvalid = form.querySelector(':invalid');
+            if (firstInvalid && typeof firstInvalid.focus === 'function') {
+              firstInvalid.focus();
+            }
           }
           form.classList.add('was-validated');
         }, false);
