@@ -70,7 +70,15 @@ function simpeg_role_otomatis_dari_jabatan($jabatan) {
 
 
 function sinkron_user_dari_pegawai($id_peg) {
-  include 'koneksi.php';
+  global $conn;
+
+  if (!isset($conn) || !$conn) {
+    @include_once __DIR__ . '/koneksi.php';
+  }
+
+  if (!isset($conn) || !$conn || $id_peg === '') {
+    return;
+  }
 
   // Ambil data pegawai
   $q = mysqli_query($conn, "SELECT * FROM tb_pegawai WHERE id_peg = '$id_peg'");

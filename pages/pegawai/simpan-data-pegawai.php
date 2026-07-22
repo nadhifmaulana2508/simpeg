@@ -49,6 +49,18 @@ function build_update_query($table, $data, $allowedCols, $whereSql){
 function app_log($message){
   error_log('[SIMPEG save pegawai] '.$message);
 }
+function safe_sinkron_user($id_peg){
+  if ($id_peg === '') { return; }
+  try {
+    if (function_exists('sinkron_user_dari_pegawai')) {
+      sinkron_user_dari_pegawai($id_peg);
+    }
+  } catch (Throwable $e) {
+    app_log('sinkron user gagal untuk ID '.$id_peg.' | '.$e->getMessage());
+  } catch (Exception $e) {
+    app_log('sinkron user gagal untuk ID '.$id_peg.' | '.$e->getMessage());
+  }
+}
 
 // [FIX] Fungsi untuk generate UUID (v4)
 function gen_uuid() {
@@ -116,9 +128,6 @@ if (!empty($_FILES['foto']['name']) && is_uploaded_file($_FILES['foto']['tmp_nam
   }
 }
 
-/* ---------- Sinkron user (early call) ---------- */
-if ($id_peg !== '') { @sinkron_user_dari_pegawai($id_peg); }
-
 /* ---------- Proses Simpan ---------- */
 if ($mode == 'tambah') {
   $cek = mysqli_query($conn, "SELECT id_peg FROM tb_pegawai WHERE id_peg = '$id_peg' LIMIT 1");
@@ -156,7 +165,7 @@ if ($mode == 'tambah') {
     $sql = build_insert_query('tb_pegawai', $insertData, $pegawaiCols);
 
     if (mysqli_query($conn, $sql)) {
-      @sinkron_user_dari_pegawai($id_peg);
+      safe_sinkron_user($id_peg);
       $status = 'sukses';
     } else {
       app_log('insert gagal untuk ID '.$id_peg.' | '.mysqli_error($conn).' | SQL: '.$sql);
